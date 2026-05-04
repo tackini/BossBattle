@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "Components/BoxComponent.h"
 #include "BossBattleCharacter.generated.h"
 
 class UInputComponent;
@@ -103,5 +104,29 @@ public:
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
+public:
+	// ダメージ判定に必要な最低速度
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	float DamageSpeedThreshould = 0.1f;
+
+	// 剣が与えるダメージ量
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	float SwordDamage = 30.0f;
+
+private:
+	// 剣の当たり判定コリジョン
+	UPROPERTY(VisibleAnywhere)
+	class UBoxComponent* SwordHitBox;
+
+	// オーバーラップ時の関数
+	UFUNCTION()
+	void OnSwordHit(
+		UPrimitiveComponent* OverlappedComp,	// 振れた自分側のコンポーネント
+		AActor* OtherActor,						// 振れた相手のActor
+		UPrimitiveComponent* OtherComp,			// 振れた相手のコンポーネント
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult
+	);
 };
 

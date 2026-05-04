@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "BossBattleCharacter.h"
+#include "EnemyBase.h"
 #include "BossBattleProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
@@ -8,6 +9,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/BoxComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
@@ -30,6 +32,16 @@ ABossBattleCharacter::ABossBattleCharacter()
 	SwordRollPivot->SetupAttachment(SwordSwingPivot);
 	SwordMesh->SetupAttachment(SwordRollPivot);
 
+	// 剣の当たり判定Boxを作成
+	SwordHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("SwordHitBox"));
+	SwordHitBox->SetupAttachment(SwordMesh);
+	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	SwordHitBox->SetBoxExtent(FVector(10.0f, 5.0f, 40.0f));
+	SwordHitBox->SetRelativeLocation(FVector(0.f, 0.f, 40.f));
+
+	SwordHitBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+	SwordHitBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	SwordHitBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
@@ -56,6 +68,14 @@ void ABossBattleCharacter::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
+	// SwordHitBoxに触れた時、OnSwordHitを呼び出す
+	if (SwordHitBox)
+	{
+		SwordHitBox->OnComponentBeginOverlap.AddDynamic(
+			this,
+			&ABossBattleCharacter::OnSwordHit
+		);
+	}
 }
 
 
@@ -101,6 +121,37 @@ void ABossBattleCharacter::OnAttackEnd()
 			FAttachmentTransformRules::SnapToTargetIncludingScale,
 			TEXT("hand_r_Socket")
 		);
+	}
+}
+
+
+void ABossBattleCharacter::OnSwordHit(
+	UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+
+	// 振れたActorが敵かどうか確認
+	AEnemyBase* Enemy = Cast<AEnemyBase>(OtherActor);
+	if (Enemy)
+	{
+		// 剣の速度が一定以上ならダメージを与える
+		if (SwingVelocity.Size() >= DamageSpeedThreshould)
+		{
+
+			Enemy->ReceiveSwordDamage(SwordDamage);
+
+			GEngine->AddOnScreenDebugMessage(
+				-1,
+				2.0f,
+				FColor::Red,
+				FString::Printf(TEXT("Hit! HP: %.1f"), Enemy->GetCurrentHP())
+			);
+
+		}
 	}
 }
 
@@ -214,6 +265,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			if (!SwordSwingPivot) return;
 
 			FVector MoveDir = TargetPos - CurrentPos;
+			SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
 
 			FVector NewPos = FMath::VInterpTo(
 				CurrentPos,
@@ -232,8 +284,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 60.0f);
 			SwordSwingPivot->SetWorldRotation(SwingRot);
 
-
-			// RollPivot → 移動方向に刃を向ける
+			// 剣の振る速度が一定以上なら回転
 			if (MoveDir.Size() > 5.0f)
 			{
 				// カメラのローカル空間での移動方向を取得
@@ -242,7 +293,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				float BladeAngle = FMath::RadiansToDegrees(
 					FMath::Atan2(LocalY, LocalZ)
 				);
-				BladeAngle = FMath::Clamp(BladeAngle, -90.0f, 90.0f);
+				BladeAngle = FMath::Clamp(BladeAngle, -80.0f, 80.0f);
 
 				FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
 				FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);
@@ -252,9 +303,24 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 					DeltaTime, 5.0f
 				);
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
-
 			}
 
+			// 剣の振る速度が一定より大きいなら攻撃
+			if (MoveDir.Size() > DamageSpeedThreshould)
+			{
+				if (SwordHitBox)
+				{
+					SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+				}
+			} else
+			{
+				// 速度が足りないときはダメージ判定をOFF
+				if (SwordHitBox)
+				{
+					SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				}
+			}
 
 		}
 
