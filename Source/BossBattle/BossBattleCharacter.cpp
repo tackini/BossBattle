@@ -5,6 +5,8 @@
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -18,6 +20,17 @@ DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
 ABossBattleCharacter::ABossBattleCharacter()
 {
+	// SwordSwingPivot、SwordRollPivot、SwordMeshの実体を作成
+	SwordSwingPivot = CreateDefaultSubobject<USceneComponent>(TEXT("SwordSwingPivot"));
+	SwordRollPivot = CreateDefaultSubobject<USceneComponent>(TEXT("SwordRollPivot"));
+	SwordMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("SwordMesh"));
+	
+	// Mesh->SwordSwingPivot->SwordRollPivot->SwordMeshと接続
+	SwordSwingPivot->SetupAttachment(GetMesh(), TEXT("hand_r_Socket"));
+	SwordRollPivot->SetupAttachment(SwordSwingPivot);
+	SwordMesh->SetupAttachment(SwordRollPivot);
+
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 		
@@ -42,7 +55,55 @@ void ABossBattleCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
 }
+
+
+//	右クリックを押すと攻撃開始
+void ABossBattleCharacter::OnAttackStart()
+{
+	SwordOffset = FVector2D(0, 0);
+	bIsAttacking = true;
+	
+	UE_LOG(LogTemp, Warning, TEXT("Attack Start"));
+
+	if (SwordSwingPivot)
+	{
+		// 手から剣を外す
+		SwordSwingPivot->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
+		// カメラの前に配置
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		if (PC)
+		{
+			FVector CamLoc;
+			FRotator CamRot;
+			PC->GetPlayerViewPoint(CamLoc, CamRot);		// 視点の位置と向きを取得
+
+			FVector Forward = CamRot.Vector();
+			FVector TargetPos = CamLoc + Forward * 100.0f;
+
+			SwordSwingPivot->SetWorldLocation(TargetPos);
+		}
+	}
+}
+
+// 右クリックを離すと攻撃中止
+void ABossBattleCharacter::OnAttackEnd()
+{
+	bIsAttacking = false;
+	UE_LOG(LogTemp, Warning, TEXT("Attack End"));
+
+	if (SwordSwingPivot)
+	{
+		SwordSwingPivot->AttachToComponent(
+			GetMesh(),
+			FAttachmentTransformRules::SnapToTargetIncludingScale,
+			TEXT("hand_r_Socket")
+		);
+	}
+}
+
 
 //////////////////////////////////////////////////////////////////////////// Input
 
@@ -60,6 +121,10 @@ void ABossBattleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ABossBattleCharacter::Look);
+
+		// Attacking
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this, &ABossBattleCharacter::OnAttackStart);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this, &ABossBattleCharacter::OnAttackEnd);
 	}
 	else
 	{
@@ -86,10 +151,113 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-	if (Controller != nullptr)
+
+	if (bIsAttacking) {
+	
+		float MaxRange_X = 30.0f, MaxRange_Y = 10.0f;
+		SwordOffset.X += -LookAxisVector.X * 3.0f;
+		SwordOffset.Y += -LookAxisVector.Y * 3.0f;
+		SwordOffset.X = FMath::Clamp(SwordOffset.X, -MaxRange_X, MaxRange_X);
+		SwordOffset.Y = FMath::Clamp(SwordOffset.Y, -MaxRange_Y, MaxRange_Y);
+
+	} else if (Controller != nullptr)
 	{
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
 	}
+}
+
+
+void ABossBattleCharacter::Tick(float DeltaTime)
+{
+	// Super;;Tick(DeltaTime);
+
+	if (bIsAttacking && SwordSwingPivot) {
+
+		APlayerController* PC = Cast<APlayerController>(GetController());
+
+		if (PC) {
+
+			// 視点の位置と向きを取得
+			FVector CamLoc;
+			FRotator CamRot;
+			PC->GetPlayerViewPoint(CamLoc, CamRot);
+
+			FVector Forward = CamRot.Vector();
+			FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
+			FVector Up = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
+			
+			// 剣の移動制限
+			float MaxRange_X = 40.0f, MaxRange_Y = 15.0f;
+
+			// 剣が中心にあるほど奥にセットされる
+			float OffsetSize = SwordOffset.Size();
+			float MaxOffsetSize = 35;
+			float NormalizedOffset = 1.0f - (OffsetSize / MaxOffsetSize);
+
+			// カメラ前に操作用の空間を作る(空間の中心点を決める)
+			FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 60.0f);
+
+			// 空間内で上下左右にどのくらい動かすかの値を決定(中心点からのずれ)
+			FVector Offset =
+				Right * -SwordOffset.X * 3.0f + Up * SwordOffset.Y * 5.0f;
+
+			// プレイヤーの移動速度を取得
+			FVector PlayerVelocity = GetVelocity();
+
+			// 元の位置からどれくらい動いたか(プレイヤーの移動も加算)
+			FVector TargetPos = BasePos + Offset + PlayerVelocity * DeltaTime;
+
+			// 剣の動きを滑らかにする(目標地点に少しずつ移動させる)
+			FVector CurrentPos = SwordSwingPivot->GetComponentLocation();
+			if (!SwordSwingPivot) return;
+
+			FVector MoveDir = TargetPos - CurrentPos;
+
+			FVector NewPos = FMath::VInterpTo(
+				CurrentPos,
+				TargetPos,
+				DeltaTime,
+				6.0f
+			);
+			// 剣の位置をセット
+			SwordSwingPivot->SetWorldLocation(NewPos);
+
+
+
+			// 縦に剣を振る
+			float NormalizedY = SwordOffset.Y / MaxRange_Y;
+			FRotator SwingRot = CamRot;
+			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 60.0f);
+			SwordSwingPivot->SetWorldRotation(SwingRot);
+
+
+			// RollPivot → 移動方向に刃を向ける
+			if (MoveDir.Size() > 5.0f)
+			{
+				// カメラのローカル空間での移動方向を取得
+				float LocalY = FVector::DotProduct(MoveDir.GetSafeNormal(), Right);
+				float LocalZ = FVector::DotProduct(MoveDir.GetSafeNormal(), Up);
+				float BladeAngle = FMath::RadiansToDegrees(
+					FMath::Atan2(LocalY, LocalZ)
+				);
+				BladeAngle = FMath::Clamp(BladeAngle, -90.0f, 90.0f);
+
+				FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
+				FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);
+				FRotator NewRollRot = FMath::RInterpTo(
+					CurrentRollRot,
+					TargetRollRot,
+					DeltaTime, 5.0f
+				);
+				SwordRollPivot->SetRelativeRotation(NewRollRot);
+
+			}
+
+
+		}
+
+	}
+
 }

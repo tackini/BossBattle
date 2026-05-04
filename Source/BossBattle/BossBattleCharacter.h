@@ -36,6 +36,7 @@ class ABossBattleCharacter : public ACharacter
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	UInputAction* MoveAction;
+
 	
 public:
 	ABossBattleCharacter();
@@ -43,8 +44,43 @@ public:
 protected:
 	virtual void BeginPlay();
 
+	virtual void Tick(float DeltaTime) override;
+
 public:
-		
+
+	// SwordSwingPivotをUEで管理
+	UPROPERTY(VisibleAnywhere)
+	USceneComponent* SwordSwingPivot;
+
+	// SwordRollPivotをUEで管理
+	UPROPERTY(VisibleAnywhere)
+	USceneComponent* SwordRollPivot;
+
+	// SwordMeshをUEで管理
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent* SwordMesh;
+
+
+
+public:
+
+	FVector2D SwordOffset;
+	FVector2D PreviousSwordOffset;	// 前フレームのoffset
+	FVector2D SwingVelocity;		// 振りベクトル
+	bool bIsAttacking;
+	
+
+	void OnAttackStart();
+
+	void OnAttackEnd();
+
+
+public:
+	// 攻撃アクションの入力
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+	class UInputAction* AttackAction;
+
+public:
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
@@ -53,7 +89,7 @@ protected:
 	/** Called for movement input */
 	void Move(const FInputActionValue& Value);
 
-	/** Called for looking input */
+	/** マウスの動きを取得 */
 	void Look(const FInputActionValue& Value);
 
 protected:
