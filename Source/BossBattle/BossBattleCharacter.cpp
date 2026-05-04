@@ -222,7 +222,7 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 
 void ABossBattleCharacter::Tick(float DeltaTime)
 {
-	// Super;;Tick(DeltaTime);
+	Super::Tick(DeltaTime);
 
 	if (bIsAttacking && SwordSwingPivot) {
 
@@ -244,7 +244,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 
 			// 剣が中心にあるほど奥にセットされる
 			float OffsetSize = SwordOffset.Size();
-			float MaxOffsetSize = 35;
+			float MaxOffsetSize = 50;
 			float NormalizedOffset = 1.0f - (OffsetSize / MaxOffsetSize);
 
 			// カメラ前に操作用の空間を作る(空間の中心点を決める)

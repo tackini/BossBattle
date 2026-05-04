@@ -17,6 +17,8 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 public:
 	// Œ•‚©‚çŒÄ‚Ño‚·
 	UFUNCTION(BlueprintCallable)
@@ -25,6 +27,30 @@ public:
 	// Œ»İ‚ÌHP‚ğŠO‚©‚ç“Ç‚ß‚é‚æ‚¤‚É‚·‚é
 	UFUNCTION(BlueprintPure)
 	float GetCurrentHP() const { return CurrentHP; }
+
+	UPROPERTY()
+	AActor* Player;
+
+public:
+
+	// UŒ‚”ÍˆÍAUŒ‚ŠÔŠu‚Ì•Ï”‚ÆŠÖ”‚ÌéŒ¾
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float AttackRange = 300.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Combat")
+	float AttackCooldown = 2.0f;
+
+	bool bCanAttack = true;
+
+	FTimerHandle AttackTimerHandle;
+
+	UPROPERTY(EditAnywhere, Category = "Combat");
+	UAnimMontage* PunchMontage;
+
+	void TryAttack();
+	void Attack();
+	void ResetAttack();
+
 
 private:
 	// HP‚Ì•Ï”‚ğİ’è
