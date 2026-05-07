@@ -68,6 +68,8 @@ void ABossBattleCharacter::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
+	CurrentHP = MaxHP;
+
 	// SwordHitBoxに触れた時、OnSwordHitを呼び出す
 	if (SwordHitBox)
 	{
@@ -156,6 +158,21 @@ void ABossBattleCharacter::OnSwordHit(
 }
 
 
+void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
+{
+	if (bIsInvincible || CurrentHP <= 0.0f) return;
+
+	CurrentHP = FMath::Max(0.0f, CurrentHP - Damage);
+
+	GEngine->AddOnScreenDebugMessage(
+		-1,
+		2.0f,
+		FColor::Blue,
+		FString::Printf(TEXT("PlayerHP: %.1f"), GetCurrentHP())
+	);
+}
+
+
 //////////////////////////////////////////////////////////////////////////// Input
 
 void ABossBattleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -205,11 +222,11 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 
 	if (bIsAttacking) {
 	
-		float MaxRange_X = 30.0f, MaxRange_Y = 10.0f;
+		// 剣の移動制限
 		SwordOffset.X += -LookAxisVector.X * 3.0f;
 		SwordOffset.Y += -LookAxisVector.Y * 3.0f;
-		SwordOffset.X = FMath::Clamp(SwordOffset.X, -MaxRange_X, MaxRange_X);
-		SwordOffset.Y = FMath::Clamp(SwordOffset.Y, -MaxRange_Y, MaxRange_Y);
+		SwordOffset.X = FMath::Clamp(SwordOffset.X, -MaxSwordRangeX, MaxSwordRangeX);
+		SwordOffset.Y = FMath::Clamp(SwordOffset.Y, -MaxSwordRangeY, MaxSwordRangeY);
 
 	} else if (Controller != nullptr)
 	{
@@ -235,16 +252,14 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			FRotator CamRot;
 			PC->GetPlayerViewPoint(CamLoc, CamRot);
 
+			
 			FVector Forward = CamRot.Vector();
 			FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
 			FVector Up = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
 			
-			// 剣の移動制限
-			float MaxRange_X = 40.0f, MaxRange_Y = 15.0f;
-
 			// 剣が中心にあるほど奥にセットされる
 			float OffsetSize = SwordOffset.Size();
-			float MaxOffsetSize = 50;
+			float MaxOffsetSize = 60;
 			float NormalizedOffset = 1.0f - (OffsetSize / MaxOffsetSize);
 
 			// カメラ前に操作用の空間を作る(空間の中心点を決める)
@@ -271,18 +286,21 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				CurrentPos,
 				TargetPos,
 				DeltaTime,
-				6.0f
+				5.0f
 			);
 			// 剣の位置をセット
 			SwordSwingPivot->SetWorldLocation(NewPos);
 
 
 
-			// 縦に剣を振る
-			float NormalizedY = SwordOffset.Y / MaxRange_Y;
+			// 剣を縦と横に振る
 			FRotator SwingRot = CamRot;
-			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 60.0f);
+			float NormalizedY = SwordOffset.Y / MaxSwordRangeY;
+			float NormalizedX = SwordOffset.X / MaxSwordRangeX;
+			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 40.0f);
+			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -50.0f);
 			SwordSwingPivot->SetWorldRotation(SwingRot);
+
 
 			// 剣の振る速度が一定以上なら回転
 			if (MoveDir.Size() > 5.0f)
@@ -300,7 +318,8 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				FRotator NewRollRot = FMath::RInterpTo(
 					CurrentRollRot,
 					TargetRollRot,
-					DeltaTime, 5.0f
+					DeltaTime,
+					5.0f
 				);
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
 			}

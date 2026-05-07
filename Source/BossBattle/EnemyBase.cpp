@@ -17,6 +17,7 @@ AEnemyBase::AEnemyBase()
 	// 最大移動速度を設定
 	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
 
+	// 進路方向への回転速度を設定
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
 }
@@ -26,7 +27,7 @@ void AEnemyBase::BeginPlay()
 	Super::BeginPlay();
 	
 	// 現在HPのセット
-	CurrentHP = MaxHP;
+	CurrentHP = Enemy.MaxHP;
 
 	// ゲーム開始時のプレイヤーの位置の取得
 	Player = GetWorld()->GetFirstPlayerController()->GetPawn();
@@ -36,52 +37,65 @@ void AEnemyBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// プレイヤーの位置に移動
-	if (Player)
+	// プレイヤーがいるかどうか
+	if (!Player) return;
+
+	// Playerとの距離によって追跡、攻撃の決定
+	float Distance = FVector::Dist(Player->GetActorLocation(), GetActorLocation());
+	if (Distance < JumpAttack.AttackRange && Distance >= PunchAttack.AttackRange + 100)
 	{
-
-		// Playerとの距離によって追跡、攻撃の決定
-		float Distance = FVector::Dist(Player->GetActorLocation(), GetActorLocation());
-		if (Distance > AttackRange)
+		TryAttack(JumpAttack);
+	}
+	else if (Distance < PunchAttack.AttackRange)
+	{
+		// 追跡を中止して攻撃
+		TryAttack(PunchAttack);
+	}
+	else 
+	{
+		if (Distance > 1000)
 		{
-			// Playerを追跡
-			FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-			AddMovementInput(Direction, 1.0f);
+			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
 		}
-		else 
+		else
 		{
-			// 追跡を中止して攻撃
-			TryAttack();
+			GetCharacterMovement()->MaxWalkSpeed = 200.0f;
 		}
-
+		// Playerを追跡
+		FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+		AddMovementInput(Direction, 1.0f);
 	}
 
 }
 
 
-void AEnemyBase::TryAttack()
+void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 {
-	if (bCanAttack)
-	{
-		bCanAttack = false;
+	// 死んでいないか
+	if (bIsDead) return;
+	
+	// 攻撃可能か 
+	if (!bCanAttack) return;
+
+	bCanAttack = false;
 		
-		Attack();
+	Attack(AttackData);
 
-		GetWorldTimerManager().SetTimer(
-			AttackTimerHandle,
-			this,
-			&AEnemyBase::ResetAttack,
-			AttackCooldown,
-			false
-		);
+	// 攻撃のクールダウンタイマー
+	GetWorldTimerManager().SetTimer(
+		AttackTimerHandle,
+		this,
+		&AEnemyBase::ResetAttack,
+		AttackData.AttackCooldown,
+		false
+	);
 
-	}
 }
 
 // 攻撃モーションの再生
-void AEnemyBase::Attack()
+void AEnemyBase::Attack(const FEnemyAttackData& AttackData)
 {
-	PlayAnimMontage(PunchMontage);
+	PlayAnimMontage(AttackData.Montage);
 }
 
 // 攻撃のクールダウンリセット
@@ -94,16 +108,15 @@ void AEnemyBase::ResetAttack()
 void AEnemyBase::ReceiveSwordDamage(float Damage)
 {
 	// 無敵中か現在HPが0なら実行しない
-	if (bIsInvincible || CurrentHP <= 0.f) return;
+	if (bIsInvincible || CurrentHP <= 0.0f) return;
 
 	// ダメージ計算
-	CurrentHP = FMath::Max(0.f, CurrentHP - Damage);
-
-	// 現在HPが0なら敵を削除
-	if (CurrentHP <= 0.f)
+	CurrentHP = FMath::Max(0.0f, CurrentHP - Damage);
+	
+	// 現在HPが0かどうか
+	if (CurrentHP <= 0.0f)
 	{
-		Destroy();
-		return;
+		Die();
 	}
 
 	// ダメージを受けると短時間無敵
@@ -112,9 +125,27 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 		InvincibleTimerHandle,
 		this,
 		&AEnemyBase::EndInvincible,
-		InvincibleDuration,
+		Enemy.InvincibleDuration,
 		false
 	);
+}
+
+// 敵の死亡時
+void AEnemyBase::Die()
+{
+	bIsDead = true;
+
+	// 死亡アニメを再生
+	PlayAnimMontage(Enemy.DeadMontage);
+
+	// 敵を３秒後に削除
+	SetLifeSpan(Enemy.DeathDestroyDelay);
+}
+
+// 敵を削除
+void AEnemyBase::DestroyEnemy()
+{
+	Destroy();
 }
 
 // 無敵時間の終了
