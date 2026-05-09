@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Components/BoxComponent.h"
 #include "EnemyBase.generated.h"
 
 
@@ -49,9 +50,24 @@ struct FEnemyAttackData
 	float AttackRange = 300.0f;
 
 	// 攻撃クールタイム
-	UPROPERTY(EditAnywhere, Category = "Attack")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
 	float AttackCooldown = 2.0f;
 
+	// 攻撃判定の場所
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
+	FName AttackSocketName = "hand_r";
+
+	// 攻撃判定の位置(調整用)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector HitBoxOffset = FVector::ZeroVector;
+
+	// 攻撃判定の回転(調整用)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FRotator HitBoxRotation = FRotator::ZeroRotator;
+
+	// 攻撃判定の大きさ
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FVector HitBoxExtent = FVector(20.0f, 20.0f, 20.0f);
 };
 
 
@@ -82,6 +98,13 @@ protected:
 	// 攻撃クールタイマー
 	FTimerHandle AttackTimerHandle;
 
+	// 攻撃データ
+	FEnemyAttackData CurrentAttackData;
+
+	// 攻撃の当たり判定コリジョン
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UBoxComponent* AttackHitBox;
+
 
 	/* Combat Fuctions */
 
@@ -89,6 +112,12 @@ protected:
 
 	void Attack(const FEnemyAttackData& AttackData);
 	
+	UFUNCTION(BlueprintCallable)
+	void EnableAttackHitBox();
+
+	UFUNCTION(BlueprintCallable)
+	void DisableAttackHitBox();
+
 	void ResetAttack();
 	
 	void DestroyEnemy();
@@ -103,11 +132,11 @@ protected:
 	FEnemyStatus Enemy;
 
 	// PunchAttack
-	UPROPERTY(EditAnywhere, Category = "Combat|Attack")
+	UPROPERTY(EditAnywhere, Category = "Combat|AttackData")
 	FEnemyAttackData PunchAttack;
 
 	// JumpAttack
-	UPROPERTY(EditAnywhere, Category = "Combat|Attack")
+	UPROPERTY(EditAnywhere, Category = "Combat|AttackData")
 	FEnemyAttackData JumpAttack;
 
 
@@ -136,5 +165,4 @@ private:
 
 	// 無敵時間の終了時に呼び出し
 	void EndInvincible();
-
 };

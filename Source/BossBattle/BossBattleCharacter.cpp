@@ -126,7 +126,7 @@ void ABossBattleCharacter::OnAttackEnd()
 	}
 }
 
-
+// 攻撃ヒット処理
 void ABossBattleCharacter::OnSwordHit(
 	UPrimitiveComponent* OverlappedComp,
 	AActor* OtherActor,
@@ -150,14 +150,14 @@ void ABossBattleCharacter::OnSwordHit(
 				-1,
 				2.0f,
 				FColor::Red,
-				FString::Printf(TEXT("Hit! HP: %.1f"), Enemy->GetCurrentHP())
+				FString::Printf(TEXT("Hit! EnemyHP: %.1f"), Enemy->GetCurrentHP())
 			);
 
 		}
 	}
 }
 
-
+// 被ダメージ処理
 void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 {
 	if (bIsInvincible || CurrentHP <= 0.0f) return;

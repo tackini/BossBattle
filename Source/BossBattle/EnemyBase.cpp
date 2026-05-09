@@ -2,6 +2,7 @@
 
 
 #include "EnemyBase.h"
+#include "BossBattleCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
@@ -20,6 +21,10 @@ AEnemyBase::AEnemyBase()
 	// i˜H•ûŒü‚Ö‚Ì‰ñ“]‘¬“x‚ğİ’è
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
+
+	// UŒ‚”»’è‚Ì¶¬
+	AttackHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackHitBox"));
+	AttackHitBox->SetupAttachment(GetMesh());
 }
 
 void AEnemyBase::BeginPlay()
@@ -53,14 +58,6 @@ void AEnemyBase::Tick(float DeltaTime)
 	}
 	else 
 	{
-		if (Distance > 1000)
-		{
-			GetCharacterMovement()->MaxWalkSpeed = 300.0f;
-		}
-		else
-		{
-			GetCharacterMovement()->MaxWalkSpeed = 200.0f;
-		}
 		// Player‚ğ’ÇÕ
 		FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 		AddMovementInput(Direction, 1.0f);
@@ -95,7 +92,62 @@ void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 // UŒ‚ƒ‚[ƒVƒ‡ƒ“‚ÌÄ¶
 void AEnemyBase::Attack(const FEnemyAttackData& AttackData)
 {
-	PlayAnimMontage(AttackData.Montage);
+	CurrentAttackData = AttackData;
+	PlayAnimMontage(CurrentAttackData.Montage);
+}
+
+// UŒ‚”»’è‚Ìİ’è
+void AEnemyBase::EnableAttackHitBox()
+{
+	// AttackHitBox, MeshCom‚ª‚ ‚é‚©
+	if (!AttackHitBox)
+	{
+		return;
+	}
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp)
+	{
+		return;
+	}
+
+	// UŒ‚”»’è‚ğ“Á’è‚ÌˆÊ’u‚É•t—^
+	AttackHitBox->AttachToComponent(
+		GetMesh(),
+		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+		CurrentAttackData.AttackSocketName
+	);
+
+	// UŒ‚”»’è‚Ìİ’è
+	AttackHitBox->SetRelativeLocation(CurrentAttackData.HitBoxOffset);
+	AttackHitBox->SetRelativeRotation(CurrentAttackData.HitBoxRotation);
+	AttackHitBox->SetBoxExtent(CurrentAttackData.HitBoxExtent);
+
+	AttackHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	AttackHitBox->UpdateOverlaps();
+
+	TArray<AActor*> OverlappingActors;
+	AttackHitBox->GetOverlappingActors(OverlappingActors);
+
+	for (AActor* Actor : OverlappingActors)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Overlapping: %s"), *GetNameSafe(Actor));
+		ABossBattleCharacter* HitPlayer = Cast<ABossBattleCharacter>(Actor);
+		if (HitPlayer)
+		{
+			HitPlayer->ReceiveEnemyDamage(CurrentAttackData.Damage);
+			DisableAttackHitBox();
+		}
+	}
+}
+
+// UŒ‚”»’è‚Ìíœ
+void AEnemyBase::DisableAttackHitBox()
+{
+	if (!AttackHitBox)
+	{
+		return;
+	}
+	AttackHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 // UŒ‚‚ÌƒN[ƒ‹ƒ_ƒEƒ“ƒŠƒZƒbƒg
@@ -103,6 +155,7 @@ void AEnemyBase::ResetAttack()
 {
 	bCanAttack = true;
 }
+
 
 // “G‚Ì”íƒ_ƒ[ƒWˆ—
 void AEnemyBase::ReceiveSwordDamage(float Damage)
@@ -138,7 +191,7 @@ void AEnemyBase::Die()
 	// €–SƒAƒjƒ‚ğÄ¶
 	PlayAnimMontage(Enemy.DeadMontage);
 
-	// “G‚ğ‚R•bŒã‚Éíœ
+	// ’x‰„‚µ‚Äíœ
 	SetLifeSpan(Enemy.DeathDestroyDelay);
 }
 
