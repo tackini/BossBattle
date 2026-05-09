@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyBase::AEnemyBase()
@@ -15,9 +16,6 @@ AEnemyBase::AEnemyBase()
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 
-	// 最大移動速度を設定
-	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
-
 	// 進路方向への回転速度を設定
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 360.0f, 0.0f);
@@ -25,6 +23,7 @@ AEnemyBase::AEnemyBase()
 	// 攻撃判定の生成
 	AttackHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("AttackHitBox"));
 	AttackHitBox->SetupAttachment(GetMesh());
+
 }
 
 void AEnemyBase::BeginPlay()
@@ -36,7 +35,12 @@ void AEnemyBase::BeginPlay()
 
 	// ゲーム開始時のプレイヤーの位置の取得
 	Player = GetWorld()->GetFirstPlayerController()->GetPawn();
+
+	// 攻撃判定ボックスにタグを追加
+	AttackHitBox->ComponentTags.Add("EnemyAttack");
+
 }
+
 
 void AEnemyBase::Tick(float DeltaTime)
 {
@@ -62,7 +66,6 @@ void AEnemyBase::Tick(float DeltaTime)
 		FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 		AddMovementInput(Direction, 1.0f);
 	}
-
 }
 
 
@@ -96,9 +99,10 @@ void AEnemyBase::Attack(const FEnemyAttackData& AttackData)
 	PlayAnimMontage(CurrentAttackData.Montage);
 }
 
-// 攻撃判定の設定
+// 攻撃判定の生成
 void AEnemyBase::EnableAttackHitBox()
 {
+
 	// AttackHitBox, MeshComがあるか
 	if (!AttackHitBox)
 	{
@@ -117,7 +121,7 @@ void AEnemyBase::EnableAttackHitBox()
 		CurrentAttackData.AttackSocketName
 	);
 
-	// 攻撃判定の設定
+	// 攻撃判定を設定
 	AttackHitBox->SetRelativeLocation(CurrentAttackData.HitBoxOffset);
 	AttackHitBox->SetRelativeRotation(CurrentAttackData.HitBoxRotation);
 	AttackHitBox->SetBoxExtent(CurrentAttackData.HitBoxExtent);
@@ -128,13 +132,26 @@ void AEnemyBase::EnableAttackHitBox()
 	TArray<AActor*> OverlappingActors;
 	AttackHitBox->GetOverlappingActors(OverlappingActors);
 
+	// 攻撃ヒット処理
 	for (AActor* Actor : OverlappingActors)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Overlapping: %s"), *GetNameSafe(Actor));
 		ABossBattleCharacter* HitPlayer = Cast<ABossBattleCharacter>(Actor);
 		if (HitPlayer)
 		{
+			// ダメージ処理
 			HitPlayer->ReceiveEnemyDamage(CurrentAttackData.Damage);
+			
+			// 被ダメージ音
+			if (CurrentAttackData.AttackSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					GetWorld(),
+					CurrentAttackData.AttackSound,
+					GetActorLocation()
+				);
+			}
+
+			// 攻撃判定の無効
 			DisableAttackHitBox();
 		}
 	}

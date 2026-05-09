@@ -12,6 +12,8 @@
 #include "Components/BoxComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Kismet/Gameplaystatics.h"
+#include "TimerManager.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
 
@@ -37,7 +39,12 @@ ABossBattleCharacter::ABossBattleCharacter()
 	SwordHitBox->SetupAttachment(SwordMesh);
 	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SwordHitBox->SetBoxExtent(FVector(10.0f, 5.0f, 40.0f));
-	SwordHitBox->SetRelativeLocation(FVector(0.f, 0.f, 40.f));
+	SwordHitBox->SetRelativeLocation(FVector(0.0f, 0.0f, 40.0f));
+	// デバック
+	SwordHitBox->SetGenerateOverlapEvents(true);
+	SwordHitBox->SetCollisionResponseToAllChannels(ECR_Overlap);
+	SwordHitBox->UpdateOverlaps();
+
 
 	SwordHitBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
 	SwordHitBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -49,7 +56,7 @@ ABossBattleCharacter::ABossBattleCharacter()
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.f, 0.f, 60.f)); // Position the camera
+	FirstPersonCameraComponent->SetRelativeLocation(FVector(-10.0f, 0.0f, 60.0f)); // Position the camera
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
@@ -59,7 +66,7 @@ ABossBattleCharacter::ABossBattleCharacter()
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
 	//Mesh1P->SetRelativeRotation(FRotator(0.9f, -19.19f, 5.2f));
-	Mesh1P->SetRelativeLocation(FVector(-30.f, 0.f, -150.f));
+	Mesh1P->SetRelativeLocation(FVector(-30.0f, 0.0f, -150.0f));
 
 }
 
@@ -78,6 +85,13 @@ void ABossBattleCharacter::BeginPlay()
 			&ABossBattleCharacter::OnSwordHit
 		);
 	}
+
+	// Tagをつける
+	SwordMesh->ComponentTags.Add("PlayerSword");
+	SwordHitBox->ComponentTags.Add("PlayerSword");
+
+	// デバック
+	UE_LOG(LogTemp, Warning, TEXT("Start"));
 }
 
 
@@ -86,8 +100,6 @@ void ABossBattleCharacter::OnAttackStart()
 {
 	SwordOffset = FVector2D(0, 0);
 	bIsAttacking = true;
-	
-	UE_LOG(LogTemp, Warning, TEXT("Attack Start"));
 
 	if (SwordSwingPivot)
 	{
@@ -100,7 +112,8 @@ void ABossBattleCharacter::OnAttackStart()
 		{
 			FVector CamLoc;
 			FRotator CamRot;
-			PC->GetPlayerViewPoint(CamLoc, CamRot);		// 視点の位置と向きを取得
+			// 視点の位置と向きを取得
+			PC->GetPlayerViewPoint(CamLoc, CamRot);
 
 			FVector Forward = CamRot.Vector();
 			FVector TargetPos = CamLoc + Forward * 100.0f;
@@ -114,7 +127,6 @@ void ABossBattleCharacter::OnAttackStart()
 void ABossBattleCharacter::OnAttackEnd()
 {
 	bIsAttacking = false;
-	UE_LOG(LogTemp, Warning, TEXT("Attack End"));
 
 	if (SwordSwingPivot)
 	{
@@ -143,9 +155,23 @@ void ABossBattleCharacter::OnSwordHit(
 		// 剣の速度が一定以上ならダメージを与える
 		if (SwingVelocity.Size() >= DamageSpeedThreshould)
 		{
-
+			// ダメージ処理
 			Enemy->ReceiveSwordDamage(SwordDamage);
 
+			// 剣ヒット音
+			if (SwordHitSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					GetWorld(),
+					SwordHitSound,
+					Enemy->GetActorLocation()
+				);
+			}
+
+			// ヒットストップ
+			StartHitStop(0.013f, 0.1f);
+
+			// デバック
 			GEngine->AddOnScreenDebugMessage(
 				-1,
 				2.0f,
@@ -155,6 +181,44 @@ void ABossBattleCharacter::OnSwordHit(
 
 		}
 	}
+
+
+	// 敵の攻撃に当たったか
+	if (OtherComp && OtherComp->ComponentHasTag("EnemyAttack"))
+	{
+		// 敵の攻撃方向を正規化して取得
+		FVector EnemyAttackDir = (GetActorLocation() - OtherComp->GetComponentLocation()).GetSafeNormal();
+
+		// 敵の攻撃と剣の攻撃の向きの近さを取得
+		float Dot = FVector::DotProduct(CurrentSwordSwingDir, EnemyAttackDir);
+
+		// デバック
+		GEngine->AddOnScreenDebugMessage(
+			-1,
+			2.0f,
+			FColor::Red,
+			FString::Printf(TEXT("Dot: %.1f"), Dot)
+		);
+
+		if (Dot < -0.7f)
+		{
+			// 敵の攻撃判定を無効化
+			OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+			// パリィ音
+			if (SwordParrySound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					GetWorld(),
+					SwordParrySound,
+					OtherComp->GetComponentLocation()
+				);
+			}
+			// ヒットストップ
+			StartHitStop(0.05, 0.1);
+		}
+	}
+
 }
 
 // 被ダメージ処理
@@ -169,6 +233,39 @@ void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 		2.0f,
 		FColor::Blue,
 		FString::Printf(TEXT("PlayerHP: %.1f"), GetCurrentHP())
+	);
+}
+
+// ヒットストップ開始
+void ABossBattleCharacter::StartHitStop(float Duration, float TimeScale)
+{
+	// どのくらい遅くするか
+	UGameplayStatics::SetGlobalTimeDilation(
+		GetWorld(),
+		TimeScale
+	);
+
+	// タイマーのリセット
+	GetWorldTimerManager().ClearTimer(
+		HitStopTimerHandle
+	);
+
+	// 遅延してヒットストップ終了
+	GetWorldTimerManager().SetTimer(
+		HitStopTimerHandle,
+		this,
+		&ABossBattleCharacter::EndHitStop,
+		Duration,
+		false
+	);
+}
+
+// ヒットストップ終了
+void ABossBattleCharacter::EndHitStop()
+{
+	UGameplayStatics::SetGlobalTimeDilation(
+		GetWorld(),
+		1.0f
 	);
 }
 
@@ -219,9 +316,9 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 	// input is a Vector2D
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
-
-	if (bIsAttacking) {
-	
+	// 剣の操作に変更
+	if (bIsAttacking) 
+	{
 		// 剣の移動制限
 		SwordOffset.X += -LookAxisVector.X * 3.0f;
 		SwordOffset.Y += -LookAxisVector.Y * 3.0f;
@@ -279,8 +376,12 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			FVector CurrentPos = SwordSwingPivot->GetComponentLocation();
 			if (!SwordSwingPivot) return;
 
+			// 剣の移動方向を取得
 			FVector MoveDir = TargetPos - CurrentPos;
 			SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
+
+			// 剣の移動方向を正規化して取得
+			CurrentSwordSwingDir = MoveDir.GetSafeNormal();
 
 			FVector NewPos = FMath::VInterpTo(
 				CurrentPos,
@@ -298,7 +399,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			float NormalizedY = SwordOffset.Y / MaxSwordRangeY;
 			float NormalizedX = SwordOffset.X / MaxSwordRangeX;
 			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 40.0f);
-			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -50.0f);
+			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -30.0f);
 			SwordSwingPivot->SetWorldRotation(SwingRot);
 
 

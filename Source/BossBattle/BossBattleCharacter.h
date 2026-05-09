@@ -75,11 +75,22 @@ protected:
 	
 	// ダメージ判定に必要な最低速度
 	UPROPERTY(EditAnywhere, Category = "Sword")
-	float DamageSpeedThreshould = 0.1f;
+	float DamageSpeedThreshould = 50.0f;
 
 	// 剣のダメージ量
 	UPROPERTY(EditAnywhere, Category = "Sword")
 	float SwordDamage = 30.0f;
+
+
+	/* Audio Setting */
+
+	// 剣のヒット音
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	USoundBase* SwordHitSound = nullptr;
+
+	// 剣のパリィ音
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	USoundBase* SwordParrySound = nullptr;
 
 
 	/* Sword Runtime */
@@ -87,6 +98,7 @@ protected:
 	FVector2D SwordOffset;			// 剣の現在位置
 	FVector2D PreviousSwordOffset;	// 前フレームの剣の位置
 	FVector2D SwingVelocity;		// 剣の移動速度
+	FVector CurrentSwordSwingDir;	// 剣の向き
 	bool bIsAttacking = false;		// 攻撃中かどうか
 	
 
@@ -97,6 +109,7 @@ protected:
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
 
+	// 剣の衝突判定処理
 	UFUNCTION()
 	void OnSwordHit(
 		UPrimitiveComponent* OverlappedComp,	// 触れた自分側のコンポーネント
@@ -106,6 +119,10 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult
 	);
+
+	// 剣のヒットストップ開始
+	UFUNCTION()
+	void StartHitStop(float Duration, float TimeScale);
 
 
 	/* Input Action */
@@ -119,7 +136,7 @@ protected:
 	class UInputAction* LookAction;
 
 
-protected:
+
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
@@ -157,8 +174,15 @@ private:
 	// プレイヤーの無敵タイマー
 	FTimerHandle InvincibleTimerHandle;
 
-	// 無敵時間の終了時に呼び出し
+	// 剣のヒットストップタイマー
+	FTimerHandle HitStopTimerHandle;
+
+	// 無敵時間の終了
 	void EndInvincible();
+
+	// 剣のヒットストップ終了
+	UFUNCTION()
+	void EndHitStop();
 
 };
 

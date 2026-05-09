@@ -67,7 +67,11 @@ struct FEnemyAttackData
 
 	// UŒ‚”»’è‚Ì‘å‚«‚³
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FVector HitBoxExtent = FVector(20.0f, 20.0f, 20.0f);
+	FVector HitBoxExtent = FVector(50.0f, 80.0f, 80.0f);
+
+	// UŒ‚‰¹
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
+	USoundBase* AttackSound = nullptr;
 };
 
 
