@@ -8,30 +8,35 @@
 #include "EnemyBase.generated.h"
 
 
+// “G‚ÌƒXƒe[ƒ^ƒX\‘¢‘Ì
 USTRUCT(BlueprintType)
 struct FEnemyStatus
 {
 	GENERATED_BODY()
 
-	// “G‚ÌHP•Ï”
-	UPROPERTY(EditAnywhere, Category = "Enemy")
+	// Å‘åHP•Ï”
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	float MaxHP = 100.0f;
 
+	// Œ»İHP•Ï”
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	float CurrentHP;
+
 	// €–Sƒ‚ƒ“ƒ^[ƒWƒ…
-	UPROPERTY(EditAnywhere, Category = "Enemy");
+	UPROPERTY(EditAnywhere, Category = "Status");
 	UAnimMontage* DeadMontage = nullptr;
 
 	// €–SŒã‚ÉÁ‚¦‚é‚Ü‚Å‚ÌŠÔ
-	UPROPERTY(EditAnywhere, Category = "Enemy")
+	UPROPERTY(EditAnywhere, Category = "Status")
 	float DeathDestroyDelay = 4.0f;
 
 	// “G‚Ì”íƒ_ƒ[ƒW‚Ì–³“GŠÔ
-	UPROPERTY(EditAnywhere, Category = "Enemy")
+	UPROPERTY(EditAnywhere, Category = "Status")
 	float InvincibleDuration = 0.5f;
 
 };
 
-
+// “G‚ÌUŒ‚\‘¢‘Ì
 USTRUCT(BlueprintType)
 struct FEnemyAttackData
 {
@@ -132,8 +137,8 @@ protected:
 	/* Struct */
 
 	// EnemyStatus
-	UPROPERTY(EditAnywhere, Category = "Enemy")
-	FEnemyStatus Enemy;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	FEnemyStatus EnemyStatus;
 
 	// PunchAttack
 	UPROPERTY(EditAnywhere, Category = "Combat|AttackData")
@@ -149,18 +154,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ReceiveSwordDamage(float Damage);
 
-	// Œ»İ‚ÌHP‚ğŠO‚©‚ç“Ç‚ß‚é‚æ‚¤‚É‚·‚é
-	UFUNCTION(BlueprintPure)
-	float GetCurrentHP() const { return CurrentHP; }
-
 	UPROPERTY()
 	AActor* Player;
 
+	/* Getter */
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	float GetCurrentHP() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	float GetMaxHP() const;
+
 
 private:
-	// “G‚ÌŒ»İHP•Ï”
-	float CurrentHP;
-
 	// “G‚ª–³“G‚©‚Ç‚¤‚©
 	bool bIsInvincible = false;
 

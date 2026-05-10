@@ -13,9 +13,11 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/Gameplaystatics.h"
+#include "BossHUDWidget.h"
 #include "TimerManager.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
+
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -40,15 +42,6 @@ ABossBattleCharacter::ABossBattleCharacter()
 	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	SwordHitBox->SetBoxExtent(FVector(10.0f, 5.0f, 40.0f));
 	SwordHitBox->SetRelativeLocation(FVector(0.0f, 0.0f, 40.0f));
-	// デバック
-	SwordHitBox->SetGenerateOverlapEvents(true);
-	SwordHitBox->SetCollisionResponseToAllChannels(ECR_Overlap);
-	SwordHitBox->UpdateOverlaps();
-
-
-	SwordHitBox->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
-	SwordHitBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-	SwordHitBox->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
@@ -75,7 +68,7 @@ void ABossBattleCharacter::BeginPlay()
 	// Call the base class  
 	Super::BeginPlay();
 
-	CurrentHP = MaxHP;
+	PlayerStatus.CurrentHP = PlayerStatus.MaxHP;
 
 	// SwordHitBoxに触れた時、OnSwordHitを呼び出す
 	if (SwordHitBox)
@@ -92,6 +85,50 @@ void ABossBattleCharacter::BeginPlay()
 
 	// デバック
 	UE_LOG(LogTemp, Warning, TEXT("Start"));
+
+	// レベル上にいる敵の取得
+	TArray<AActor*> FoundEnemies;
+	UGameplayStatics::GetAllActorsOfClass(
+		GetWorld(),
+		AEnemyBase::StaticClass(),
+		FoundEnemies
+	);
+	if (FoundEnemies.Num() > 0)
+	{
+		CurrentEnemy = Cast<AEnemyBase>(FoundEnemies[0]);
+	}
+
+	// HUDWidgetの作成
+	if (HUDWidgetClass)
+	{
+		// UIの作成
+		HUDWidget = CreateWidget<UBossHUDWidget>(GetWorld(), HUDWidgetClass);
+
+		if (HUDWidget)
+		{
+			// Uの表示
+			HUDWidget->AddToViewport();
+
+			// プレイヤーのHPPercentの計算
+			float PlayerHPPercent = PlayerStatus.MaxHP > 0.0f
+				? PlayerStatus.CurrentHP / PlayerStatus.MaxHP
+				: 0.0f;
+
+			// PlayerHPPercentの更新
+			HUDWidget->UpdatePlayerHP(PlayerHPPercent);
+
+			if (CurrentEnemy)
+			{
+				// 敵のHPPercentの計算
+				float EnemyHPPercent = CurrentEnemy->GetMaxHP() > 0.0f
+					? CurrentEnemy->GetCurrentHP() / CurrentEnemy->GetMaxHP()
+					: 0.0f;
+
+				// EnemyHPPercentの更新
+				HUDWidget->UpdateEnemyHP(EnemyHPPercent);
+			}
+		}
+	}
 }
 
 
@@ -158,6 +195,16 @@ void ABossBattleCharacter::OnSwordHit(
 			// ダメージ処理
 			Enemy->ReceiveSwordDamage(SwordDamage);
 
+			// 敵のHPPercentの更新
+			if (HUDWidget)
+			{
+				float HPPercent = Enemy->GetMaxHP() > 0.0f
+					? Enemy->GetCurrentHP() / Enemy->GetMaxHP()
+					: 0.0f;
+
+				HUDWidget->UpdateEnemyHP(HPPercent);
+			}
+
 			// 剣ヒット音
 			if (SwordHitSound)
 			{
@@ -170,14 +217,6 @@ void ABossBattleCharacter::OnSwordHit(
 
 			// ヒットストップ
 			StartHitStop(0.013f, 0.1f);
-
-			// デバック
-			GEngine->AddOnScreenDebugMessage(
-				-1,
-				2.0f,
-				FColor::Red,
-				FString::Printf(TEXT("Hit! EnemyHP: %.1f"), Enemy->GetCurrentHP())
-			);
 
 		}
 	}
@@ -224,16 +263,19 @@ void ABossBattleCharacter::OnSwordHit(
 // 被ダメージ処理
 void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 {
-	if (bIsInvincible || CurrentHP <= 0.0f) return;
+	if (bIsInvincible || PlayerStatus.CurrentHP <= 0.0f) return;
 
-	CurrentHP = FMath::Max(0.0f, CurrentHP - Damage);
+	PlayerStatus.CurrentHP = FMath::Max(0.0f, PlayerStatus.CurrentHP - Damage);
 
-	GEngine->AddOnScreenDebugMessage(
-		-1,
-		2.0f,
-		FColor::Blue,
-		FString::Printf(TEXT("PlayerHP: %.1f"), GetCurrentHP())
-	);
+	// HPPercentの計算と更新
+	if (HUDWidget)
+	{
+		float HPPercent = PlayerStatus.MaxHP > 0.0f
+			? PlayerStatus.CurrentHP / PlayerStatus.MaxHP
+			: 0.0f;
+
+		HUDWidget->UpdatePlayerHP(HPPercent);
+	}
 }
 
 // ヒットストップ開始

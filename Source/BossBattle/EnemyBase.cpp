@@ -31,14 +31,13 @@ void AEnemyBase::BeginPlay()
 	Super::BeginPlay();
 	
 	// 現在HPのセット
-	CurrentHP = Enemy.MaxHP;
+	EnemyStatus.CurrentHP = EnemyStatus.MaxHP;
 
 	// ゲーム開始時のプレイヤーの位置の取得
 	Player = GetWorld()->GetFirstPlayerController()->GetPawn();
 
 	// 攻撃判定ボックスにタグを追加
 	AttackHitBox->ComponentTags.Add("EnemyAttack");
-
 }
 
 
@@ -102,7 +101,6 @@ void AEnemyBase::Attack(const FEnemyAttackData& AttackData)
 // 攻撃判定の生成
 void AEnemyBase::EnableAttackHitBox()
 {
-
 	// AttackHitBox, MeshComがあるか
 	if (!AttackHitBox)
 	{
@@ -178,13 +176,13 @@ void AEnemyBase::ResetAttack()
 void AEnemyBase::ReceiveSwordDamage(float Damage)
 {
 	// 無敵中か現在HPが0なら実行しない
-	if (bIsInvincible || CurrentHP <= 0.0f) return;
+	if (bIsInvincible || EnemyStatus.CurrentHP <= 0.0f) return;
 
 	// ダメージ計算
-	CurrentHP = FMath::Max(0.0f, CurrentHP - Damage);
-	
+	EnemyStatus.CurrentHP = FMath::Max(0.0f, EnemyStatus.CurrentHP - Damage);
+
 	// 現在HPが0かどうか
-	if (CurrentHP <= 0.0f)
+	if (EnemyStatus.CurrentHP <= 0.0f)
 	{
 		Die();
 	}
@@ -195,7 +193,7 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 		InvincibleTimerHandle,
 		this,
 		&AEnemyBase::EndInvincible,
-		Enemy.InvincibleDuration,
+		EnemyStatus.InvincibleDuration,
 		false
 	);
 }
@@ -206,10 +204,10 @@ void AEnemyBase::Die()
 	bIsDead = true;
 
 	// 死亡アニメを再生
-	PlayAnimMontage(Enemy.DeadMontage);
+	PlayAnimMontage(EnemyStatus.DeadMontage);
 
 	// 遅延して削除
-	SetLifeSpan(Enemy.DeathDestroyDelay);
+	SetLifeSpan(EnemyStatus.DeathDestroyDelay);
 }
 
 // 敵を削除
@@ -224,3 +222,14 @@ void AEnemyBase::EndInvincible()
 	bIsInvincible = false;
 }
 
+// 現在HPの読み込み
+float AEnemyBase::GetCurrentHP() const
+{
+	return EnemyStatus.CurrentHP;
+}
+
+// 最大HPの読み込み
+float AEnemyBase::GetMaxHP() const
+{
+	return EnemyStatus.MaxHP;
+}

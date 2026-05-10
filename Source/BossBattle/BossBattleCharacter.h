@@ -8,14 +8,32 @@
 #include "Components/BoxComponent.h"
 #include "BossBattleCharacter.generated.h"
 
+class AEnemyBase;
 class UInputComponent;
 class USkeletalMeshComponent;
 class UCameraComponent;
 class UInputAction;
 class UInputMappingContext;
+class UBossHUDWidget;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+
+USTRUCT(BlueprintType)
+struct FPlayerStatus
+{
+	GENERATED_BODY()
+
+	// 最大HP
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	float MaxHP = 100;
+
+	// 現在HP
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	float CurrentHP = 100;
+
+};
+
 
 UCLASS(config=Game)
 class BOSSBATTLE_API ABossBattleCharacter : public ACharacter
@@ -136,6 +154,21 @@ protected:
 	class UInputAction* LookAction;
 
 
+	/* Struct */
+
+	// PlayerStatus
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	FPlayerStatus PlayerStatus;
+
+
+	/* UI */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UBossHUDWidget> HUDWidgetClass;
+
+	UPROPERTY()
+	UBossHUDWidget* HUDWidget;
+
 
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
@@ -147,24 +180,19 @@ public:
 	/** Returns FirstPersonCameraComponent subobject **/
 	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
 
-
+	// 敵からのダメージ処理
 	UFUNCTION(BlueprintCallable)
 	void ReceiveEnemyDamage(float Damage);
 
-	// 現在のHPを外から読めるようにする
-	UFUNCTION(BlueprintPure)
-	float GetCurrentHP() const { return CurrentHP; }
+	// 敵の取得
+	UPROPERTY()
+	AEnemyBase* CurrentEnemy;
 
 
 private:
 	// 剣の当たり判定コリジョン
 	UPROPERTY(VisibleAnywhere)
 	class UBoxComponent* SwordHitBox;
-
-
-	UPROPERTY(EditAnywhere, Category = "Player")
-	float MaxHP = 100;
-	float CurrentHP;
 
 	// プレイヤーの被ダメージ時の無敵時間
 	UPROPERTY(EditAnywhere, Category = "Player")
