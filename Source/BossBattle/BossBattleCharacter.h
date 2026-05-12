@@ -170,6 +170,7 @@ protected:
 	UBossHUDWidget* HUDWidget;
 
 
+
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface

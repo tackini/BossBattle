@@ -7,12 +7,20 @@
 #include "Components/BoxComponent.h"
 #include "EnemyBase.generated.h"
 
+class AEnemyBase;
+
+// 全体に死亡通知を渡す
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEnemyDead, AEnemyBase*, DeadEnemy);
 
 // 敵のステータス構造体
 USTRUCT(BlueprintType)
 struct FEnemyStatus
 {
 	GENERATED_BODY()
+
+	// 敵の名前
+	UPROPERTY(EditAnywhere, Category = "Status")
+	FText EnemyName;
 
 	// 最大HP変数
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
@@ -89,6 +97,10 @@ class BOSSBATTLE_API AEnemyBase : public ACharacter
 public:
 	AEnemyBase();
 
+	// 敵死亡通知
+	UPROPERTY(BlueprintAssignable)
+	FOnEnemyDead OnEnemyDead;
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -163,6 +175,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Status")
 	float GetMaxHP() const;
+
+	FText GetEnemyName() const
+	{
+		return EnemyStatus.EnemyName;
+	}
 
 
 private:

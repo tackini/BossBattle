@@ -203,6 +203,9 @@ void AEnemyBase::Die()
 {
 	bIsDead = true;
 
+	// “G‚Ì€–S’Ê’m
+	OnEnemyDead.Broadcast(this);
+
 	// €–SƒAƒjƒ‚ğÄ¶
 	PlayAnimMontage(EnemyStatus.DeadMontage);
 

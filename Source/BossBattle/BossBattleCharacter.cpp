@@ -126,6 +126,12 @@ void ABossBattleCharacter::BeginPlay()
 
 				// EnemyHPPercentの更新
 				HUDWidget->UpdateEnemyHP(EnemyHPPercent);
+
+				// EnemyNameの更新
+				HUDWidget->UpdateEnemyName(CurrentEnemy->GetEnemyName());
+
+				// HUDWodgetのOnEnemyDeadを呼ぶ
+				CurrentEnemy->OnEnemyDead.AddDynamic(HUDWidget, &UBossHUDWidget::OnEnemyDead);
 			}
 		}
 	}
