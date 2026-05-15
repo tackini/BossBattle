@@ -195,8 +195,8 @@ void ABossBattleCharacter::OnSwordHit(
 	AEnemyBase* Enemy = Cast<AEnemyBase>(OtherActor);
 	if (Enemy)
 	{
-		// 剣の速度が一定以上ならダメージを与える
-		if (SwingVelocity.Size() >= DamageSpeedThreshould)
+		// 剣の速度が一定以上かつ無敵でないならダメージを与える
+		if (SwingVelocity.Size() >= DamageSpeedThreshould && Enemy->GetbIsInvincible() == false)
 		{
 			// ダメージ処理
 			Enemy->ReceiveSwordDamage(SwordDamage);

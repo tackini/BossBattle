@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Components/BoxComponent.h"
+#include "Particles/ParticleSystem.h"
 #include "EnemyBase.generated.h"
 
 class AEnemyBase;
@@ -40,8 +41,7 @@ struct FEnemyStatus
 
 	// 敵の被ダメージ時の無敵時間
 	UPROPERTY(EditAnywhere, Category = "Status")
-	float InvincibleDuration = 0.5f;
-
+	float InvincibleDuration = 0.1f;
 };
 
 // 敵の攻撃構造体
@@ -145,6 +145,12 @@ protected:
 	
 	void Die();
 
+	// Color
+	void FlashRed();
+
+	UPROPERTY()
+	UMaterialInstanceDynamic* DynamicMaterial;
+
 
 	/* Struct */
 
@@ -169,6 +175,15 @@ public:
 	UPROPERTY()
 	AActor* Player;
 
+	// 死亡時の爆発
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFX")
+	UParticleSystem* DeathExplosion;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	USoundBase* DeathExplosionSound;
+
+
+
 	/* Getter */
 	UFUNCTION(BlueprintCallable, Category = "Status")
 	float GetCurrentHP() const;
@@ -181,14 +196,25 @@ public:
 		return EnemyStatus.EnemyName;
 	}
 
+	bool GetbIsInvincible() const;
+
 
 private:
 	// 敵が無敵かどうか
 	bool bIsInvincible = false;
+
+	// 削除タイマー
+	FTimerHandle EnemyDestroyTimerHandle;
 
 	// 敵の無敵タイマー
 	FTimerHandle InvincibleTimerHandle;
 
 	// 無敵時間の終了時に呼び出し
 	void EndInvincible();
+
+	// 敵の色タイマー
+	FTimerHandle FlashTimerHandle;
+
+	// 敵の色のリセット
+	void ResetColor();
 };

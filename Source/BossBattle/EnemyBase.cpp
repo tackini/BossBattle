@@ -34,10 +34,12 @@ void AEnemyBase::BeginPlay()
 	EnemyStatus.CurrentHP = EnemyStatus.MaxHP;
 
 	// ゲーム開始時のプレイヤーの位置の取得
-	Player = GetWorld()->GetFirstPlayerController()->GetPawn();
+	//Player = GetWorld()->GetFirstPlayerController()->GetPawn();
 
 	// 攻撃判定ボックスにタグを追加
 	AttackHitBox->ComponentTags.Add("EnemyAttack");
+
+	DynamicMaterial = GetMesh()->CreateAndSetMaterialInstanceDynamic(0);
 }
 
 
@@ -46,7 +48,7 @@ void AEnemyBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	// プレイヤーがいるかどうか
-	if (!Player) return;
+	/*if (!Player) return;
 
 	// Playerとの距離によって追跡、攻撃の決定
 	float Distance = FVector::Dist(Player->GetActorLocation(), GetActorLocation());
@@ -64,7 +66,7 @@ void AEnemyBase::Tick(float DeltaTime)
 		// Playerを追跡
 		FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 		AddMovementInput(Direction, 1.0f);
-	}
+	}*/
 }
 
 
@@ -186,6 +188,9 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	{
 		Die();
 	}
+	
+	//ダメージを受けると色を赤く光らせる
+	FlashRed();
 
 	// ダメージを受けると短時間無敵
 	bIsInvincible = true;
@@ -195,6 +200,38 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 		&AEnemyBase::EndInvincible,
 		EnemyStatus.InvincibleDuration,
 		false
+	);
+}
+
+void AEnemyBase::FlashRed()
+{
+	if (!DynamicMaterial) return;
+
+	// 色を変化
+	DynamicMaterial->SetVectorParameterValue(
+		TEXT("BodyColor"),
+		FLinearColor::Red
+	);
+
+	// TimerHnadleのリセット
+	GetWorld()->GetTimerManager().ClearTimer(FlashTimerHandle);
+
+	GetWorld()->GetTimerManager().SetTimer(
+		FlashTimerHandle,
+		this,
+		&AEnemyBase::ResetColor,
+		0.1f,
+		false
+	);
+}
+
+void AEnemyBase::ResetColor()
+{
+	if (!DynamicMaterial) return;
+	// 色のリセット
+	DynamicMaterial->SetVectorParameterValue(
+		TEXT("BodyColor"),
+		FLinearColor::White
 	);
 }
 
@@ -209,13 +246,42 @@ void AEnemyBase::Die()
 	// 死亡アニメを再生
 	PlayAnimMontage(EnemyStatus.DeadMontage);
 
-	// 遅延して削除
-	SetLifeSpan(EnemyStatus.DeathDestroyDelay);
+	// 遅延してDestroyEnemyを呼ぶ
+	GetWorld()->GetTimerManager().SetTimer(
+		EnemyDestroyTimerHandle,
+		this,
+		&AEnemyBase::DestroyEnemy,
+		EnemyStatus.DeathDestroyDelay,
+		false
+	);
 }
 
 // 敵を削除
 void AEnemyBase::DestroyEnemy()
 {
+	// 爆発エフェクトの再生
+	if (DeathExplosion)
+	{
+		UGameplayStatics::SpawnEmitterAtLocation(
+			GetWorld(),
+			DeathExplosion,
+			GetActorLocation(),
+			GetActorRotation(),
+			GetActorScale3D()
+		);
+	}
+
+	// 爆発音の再生
+	if (DeathExplosionSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
+			GetWorld(),
+			AEnemyBase::DeathExplosionSound,
+			GetActorLocation()
+		);
+	}
+
+	// 敵の削除
 	Destroy();
 }
 
@@ -235,4 +301,9 @@ float AEnemyBase::GetCurrentHP() const
 float AEnemyBase::GetMaxHP() const
 {
 	return EnemyStatus.MaxHP;
+}
+
+bool AEnemyBase::GetbIsInvincible() const
+{
+	return bIsInvincible;
 }
