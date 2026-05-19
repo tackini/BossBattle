@@ -3,6 +3,9 @@
 
 #include "EnemyBase.h"
 #include "BossBattleCharacter.h"
+#include "AIController.h"
+#include "BrainComponent.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
@@ -33,9 +36,6 @@ void AEnemyBase::BeginPlay()
 	// 現在HPのセット
 	EnemyStatus.CurrentHP = EnemyStatus.MaxHP;
 
-	// ゲーム開始時のプレイヤーの位置の取得
-	//Player = GetWorld()->GetFirstPlayerController()->GetPawn();
-
 	// 攻撃判定ボックスにタグを追加
 	AttackHitBox->ComponentTags.Add("EnemyAttack");
 
@@ -47,29 +47,9 @@ void AEnemyBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// プレイヤーがいるかどうか
-	/*if (!Player) return;
-
-	// Playerとの距離によって追跡、攻撃の決定
-	float Distance = FVector::Dist(Player->GetActorLocation(), GetActorLocation());
-	if (Distance < JumpAttack.AttackRange && Distance >= PunchAttack.AttackRange + 100)
-	{
-		TryAttack(JumpAttack);
-	}
-	else if (Distance < PunchAttack.AttackRange)
-	{
-		// 追跡を中止して攻撃
-		TryAttack(PunchAttack);
-	}
-	else 
-	{
-		// Playerを追跡
-		FVector Direction = (Player->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-		AddMovementInput(Direction, 1.0f);
-	}*/
 }
 
-
+// 攻撃判定の処理
 void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 {
 	// 死んでいないか
@@ -78,8 +58,31 @@ void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 	// 攻撃可能か 
 	if (!bCanAttack) return;
 
+
+	// Playerの取得
+	if (!Player)
+	{
+		Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	}
+
+	if (!Player) return;
+
+	// プレイヤーの方向
+	FVector ToPlayer = Player->GetActorLocation() - GetActorLocation();
+	ToPlayer.Z = 0.0f;
+
+	if (ToPlayer.IsNearlyZero()) return;
+
+
+	FRotator TargetRot = ToPlayer.Rotation();
+
+	// 向きのセット
+	SetActorRotation(TargetRot);
+
+	// 攻撃した
 	bCanAttack = false;
-		
+	
+	// 攻撃開始
 	Attack(AttackData);
 
 	// 攻撃のクールダウンタイマー
@@ -100,64 +103,45 @@ void AEnemyBase::Attack(const FEnemyAttackData& AttackData)
 	PlayAnimMontage(CurrentAttackData.Montage);
 }
 
-// 攻撃判定の生成
+// 攻撃判定のコリジョンON
 void AEnemyBase::EnableAttackHitBox()
 {
+	// 攻撃したActorの保存をリセット
+	HitActors.Empty();
+
 	// AttackHitBox, MeshComがあるか
-	if (!AttackHitBox)
+	if (!IsValid(AttackHitBox))
 	{
 		return;
 	}
 	USkeletalMeshComponent* MeshComp = GetMesh();
-	if (!MeshComp)
+	if (!IsValid(MeshComp))
 	{
 		return;
 	}
 
-	// 攻撃判定を特定の位置に付与
+	// AttackHitBoxをソケットに付与
 	AttackHitBox->AttachToComponent(
 		GetMesh(),
 		FAttachmentTransformRules::SnapToTargetNotIncludingScale,
 		CurrentAttackData.AttackSocketName
 	);
 
-	// 攻撃判定を設定
+	// 最初の攻撃判定ボックスの所得
+	PreviousAttackHitBoxLocation = AttackHitBox->GetComponentLocation();
+
+	// 攻撃判定の位置、向き、大きさをセット
 	AttackHitBox->SetRelativeLocation(CurrentAttackData.HitBoxOffset);
 	AttackHitBox->SetRelativeRotation(CurrentAttackData.HitBoxRotation);
 	AttackHitBox->SetBoxExtent(CurrentAttackData.HitBoxExtent);
 
+	// コリジョンをON
 	AttackHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	AttackHitBox->UpdateOverlaps();
-
-	TArray<AActor*> OverlappingActors;
-	AttackHitBox->GetOverlappingActors(OverlappingActors);
-
-	// 攻撃ヒット処理
-	for (AActor* Actor : OverlappingActors)
-	{
-		ABossBattleCharacter* HitPlayer = Cast<ABossBattleCharacter>(Actor);
-		if (HitPlayer)
-		{
-			// ダメージ処理
-			HitPlayer->ReceiveEnemyDamage(CurrentAttackData.Damage);
-			
-			// 被ダメージ音
-			if (CurrentAttackData.AttackSound)
-			{
-				UGameplayStatics::PlaySoundAtLocation(
-					GetWorld(),
-					CurrentAttackData.AttackSound,
-					GetActorLocation()
-				);
-			}
-
-			// 攻撃判定の無効
-			DisableAttackHitBox();
-		}
-	}
 }
 
-// 攻撃判定の削除
+
+// 攻撃判定のコリジョンOFF
 void AEnemyBase::DisableAttackHitBox()
 {
 	if (!AttackHitBox)
@@ -166,6 +150,66 @@ void AEnemyBase::DisableAttackHitBox()
 	}
 	AttackHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
+
+
+// AttackTrace
+void AEnemyBase::AttackTrace(FEnemyAttackData& AttackData)
+{
+	FVector CurrentLocation = AttackHitBox->GetComponentLocation();
+
+	TArray<FHitResult> HitResults;
+
+	GetWorld()->SweepMultiByChannel(
+		HitResults,
+		PreviousAttackHitBoxLocation,
+		CurrentLocation,
+		FQuat(AttackHitBox->GetComponentQuat()),
+		ECC_Pawn,
+		FCollisionShape::MakeBox(AttackData.HitBoxExtent)
+	);
+
+	// 当たったものを順番に確認
+	for (const FHitResult& Hit : HitResults)
+	{
+
+		AActor* HitActor = Hit.GetActor();
+		// 当たったものがActorか
+		if (!IsValid(HitActor)) continue;
+
+		// 一度攻撃したActorを無視
+		if (HitActors.Contains(HitActor))
+		{
+			continue;
+		}
+
+		// 当たったActorがPlayerか
+		ABossBattleCharacter* HitPlayer = Cast<ABossBattleCharacter>(HitActor);
+		if (HitPlayer)
+		{
+			// 一度攻撃したActorを保存
+			HitActors.Add(HitActor);
+
+			// ダメージ処理
+			HitPlayer->ReceiveEnemyDamage(CurrentAttackData.Damage);
+
+			// ダメージ音
+			if (CurrentAttackData.AttackSound)
+			{
+				UGameplayStatics::PlaySoundAtLocation(
+					GetWorld(),
+					CurrentAttackData.AttackSound,
+					GetActorLocation()
+				);
+			}
+			// 攻撃判定の無効
+			DisableAttackHitBox();
+			break;
+		}
+	}
+
+	PreviousAttackHitBoxLocation = CurrentLocation;
+}
+
 
 // 攻撃のクールダウンリセット
 void AEnemyBase::ResetAttack()
@@ -188,6 +232,23 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	{
 		Die();
 	}
+
+	// 受けた攻撃回数のカウント
+	HitCount++;
+
+	// 一定回数攻撃するとバックジャンプ
+	if (HitCount >= BackJumpHitThreshould)
+	{
+		AAIController* AICon = Cast<AAIController>(GetController());
+
+		if (AICon && AICon->GetBlackboardComponent())
+		{
+			AICon->GetBlackboardComponent()->SetValueAsBool(
+				"ShouldBackJump",
+				true
+			);
+		}
+	}
 	
 	//ダメージを受けると色を赤く光らせる
 	FlashRed();
@@ -203,6 +264,87 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	);
 }
 
+// 後隙の開始
+void AEnemyBase::StartRecovery()
+{
+	bIsRecovery = true;
+}
+
+
+// 後隙の終了
+void AEnemyBase::EndRecovery()
+{
+	bIsRecovery = false;
+}
+
+
+// BackJump
+void AEnemyBase::BackJump()
+{
+	AAIController* AICon = Cast<AAIController>(GetController());
+	if (AICon)
+	{
+		AICon->StopMovement();
+	}
+
+	// Playerの取得
+	if (!IsValid(Player))
+	{
+		Player = UGameplayStatics::GetPlayerPawn(GetWorld(), 0);
+	}
+
+	if (!IsValid(Player)) return;
+
+	// プレイヤーの方向
+	FVector ToPlayer = Player->GetActorLocation() - GetActorLocation();
+	ToPlayer.Z = 0.0f;
+
+	if (ToPlayer.IsNearlyZero()) return;
+
+
+	FRotator TargetRot = ToPlayer.Rotation();
+
+	// 向きのセット
+	SetActorRotation(TargetRot);
+
+	// ジャンプモンタージュ再生
+	if (EnemyStatus.JumpMontage)
+	{
+		PlayAnimMontage(EnemyStatus.JumpMontage);
+	}
+}
+
+
+// BackJump時の後ろ移動
+void AEnemyBase::LaunchBackJump()
+{
+	FVector BackDir = -GetActorForwardVector();
+	BackDir.Z = 0.0f;
+	BackDir.Normalize();
+
+	FVector LaunchVelocity = BackDir * 800.0f;
+	LaunchVelocity.Z = 500.0f;
+
+	LaunchCharacter(LaunchVelocity, true, true);
+}
+
+
+// 被攻撃回数をリセット
+void AEnemyBase::ResetCount()
+{
+	AAIController* AICon = Cast<AAIController>(GetController());
+	// BackJuumoを無効
+	if (AICon && AICon->GetBlackboardComponent())
+	{
+		AICon->GetBlackboardComponent()->SetValueAsBool(
+			"ShouldBackJump",
+			false
+		);
+		HitCount = 0;
+	}
+}
+
+// 一瞬だけMeshを赤くする
 void AEnemyBase::FlashRed()
 {
 	if (!DynamicMaterial) return;
@@ -225,6 +367,7 @@ void AEnemyBase::FlashRed()
 	);
 }
 
+// 色を戻す
 void AEnemyBase::ResetColor()
 {
 	if (!DynamicMaterial) return;
@@ -239,12 +382,16 @@ void AEnemyBase::ResetColor()
 void AEnemyBase::Die()
 {
 	bIsDead = true;
+	bCanAttack = false;
 
 	// 敵の死亡通知
 	OnEnemyDead.Broadcast(this);
 
 	// 死亡アニメを再生
-	PlayAnimMontage(EnemyStatus.DeadMontage);
+	if (EnemyStatus.DeadMontage)
+	{
+		PlayAnimMontage(EnemyStatus.DeadMontage);
+	}
 
 	// 遅延してDestroyEnemyを呼ぶ
 	GetWorld()->GetTimerManager().SetTimer(
@@ -254,6 +401,23 @@ void AEnemyBase::Die()
 		EnemyStatus.DeathDestroyDelay,
 		false
 	);
+
+	AAIController* AICon = Cast<AAIController>(GetController());
+	if (AICon)
+	{
+		// AIControllerを止める
+		AICon->StopMovement();
+
+		// BhaviorTreeを止める
+		UBrainComponent* Brain = AICon->GetBrainComponent();
+		if (Brain)
+		{
+			Brain->StopLogic(TEXT("Enemy Dead"));
+		}
+	}
+
+	DisableAttackHitBox();
+	GetCharacterMovement()->StopMovementImmediately();
 }
 
 // 敵を削除
@@ -303,6 +467,7 @@ float AEnemyBase::GetMaxHP() const
 	return EnemyStatus.MaxHP;
 }
 
+// 無敵の読み込み
 bool AEnemyBase::GetbIsInvincible() const
 {
 	return bIsInvincible;

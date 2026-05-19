@@ -18,14 +18,11 @@ public:
 		
 	virtual void BeginPlay() override;
 
+	virtual void Tick(float DeltaTime) override;
+
 protected:
 
-	// BB‚ğƒZƒbƒg
+	// BB‚Ì•Ï”
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
 	UBehaviorTree* BehaviorTree;
-
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AI")
-	FName TargetActorKeyName = "TargetActor";
-
 };

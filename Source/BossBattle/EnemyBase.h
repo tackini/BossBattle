@@ -31,17 +31,22 @@ struct FEnemyStatus
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	float CurrentHP;
 
+	// バックジャンプモンタージュ
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	UAnimMontage* JumpMontage = nullptr;
+
 	// 死亡モンタージュ
 	UPROPERTY(EditAnywhere, Category = "Status");
 	UAnimMontage* DeadMontage = nullptr;
 
 	// 死亡後に消えるまでの時間
 	UPROPERTY(EditAnywhere, Category = "Status")
-	float DeathDestroyDelay = 4.0f;
+	float DeathDestroyDelay = 2.9f;
 
 	// 敵の被ダメージ時の無敵時間
 	UPROPERTY(EditAnywhere, Category = "Status")
 	float InvincibleDuration = 0.1f;
+	
 };
 
 // 敵の攻撃構造体
@@ -116,6 +121,20 @@ protected:
 	// 敵が死んでいるかどうか
 	bool bIsDead = false;
 
+	// 隙中かどうか
+	UPROPERTY(BlueprintReadOnly)
+	bool bIsRecovery = false;
+
+	// 被攻撃ヒット回数
+	UPROPERTY(BlueprintReadOnly)
+	int32 HitCount = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 BackJumpHitThreshould = 5;
+
+	UFUNCTION(BlueprintCallable)
+	void ResetCount();
+
 	// 攻撃クールタイマー
 	FTimerHandle AttackTimerHandle;
 
@@ -126,28 +145,59 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UBoxComponent* AttackHitBox;
 
+	/* AttackTrace */
+	// 前フレームのAttackHitBoxの位置
+	UPROPERTY()
+	FVector PreviousAttackHitBoxLocation;
+
+	// AttackHitBoxに一度触れたActorを入れる変数
+	UPROPERTY()
+	TSet<AActor*> HitActors;
+
 
 	/* Combat Fuctions */
 
+	// 攻撃出来るか
+	UFUNCTION(BlueprintCallable)
 	void TryAttack(const FEnemyAttackData& AttackData);
 
+	// 攻撃処理
 	void Attack(const FEnemyAttackData& AttackData);
 	
+	// 当たり判定のセット
 	UFUNCTION(BlueprintCallable)
 	void EnableAttackHitBox();
 
 	UFUNCTION(BlueprintCallable)
 	void DisableAttackHitBox();
 
+	// AttackTrace
+	UFUNCTION(BlueprintCallable)
+	void AttackTrace(FEnemyAttackData& AttackData);
+
+	// 攻撃可能処理
 	void ResetAttack();
 	
+	// 敵の削除
 	void DestroyEnemy();
 	
 	void Die();
 
+	// 後隙のセット
+	UFUNCTION(BlueprintCallable)
+	void StartRecovery();
+
+	UFUNCTION(BlueprintCallable)
+	void EndRecovery();
+
+	// BackJump
+	UFUNCTION(BlueprintCallable)
+	void BackJump();
+	UFUNCTION(BlueprintCallable)
+	void LaunchBackJump();
+
 	// Color
 	void FlashRed();
-
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicMaterial;
 
@@ -159,11 +209,11 @@ protected:
 	FEnemyStatus EnemyStatus;
 
 	// PunchAttack
-	UPROPERTY(EditAnywhere, Category = "Combat|AttackData")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
 	FEnemyAttackData PunchAttack;
 
 	// JumpAttack
-	UPROPERTY(EditAnywhere, Category = "Combat|AttackData")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
 	FEnemyAttackData JumpAttack;
 
 
@@ -181,7 +231,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Sound")
 	USoundBase* DeathExplosionSound;
-
 
 
 	/* Getter */

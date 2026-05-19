@@ -39,7 +39,7 @@ ABossBattleCharacter::ABossBattleCharacter()
 	// 剣の当たり判定Boxを作成
 	SwordHitBox = CreateDefaultSubobject<UBoxComponent>(TEXT("SwordHitBox"));
 	SwordHitBox->SetupAttachment(SwordMesh);
-	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SwordHitBox->SetBoxExtent(FVector(10.0f, 5.0f, 40.0f));
 	SwordHitBox->SetRelativeLocation(FVector(0.0f, 0.0f, 40.0f));
 
@@ -143,6 +143,8 @@ void ABossBattleCharacter::OnAttackStart()
 {
 	SwordOffset = FVector2D(0, 0);
 	bIsAttacking = true;
+	// 当たり判定をON
+	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
 	if (SwordSwingPivot)
 	{
@@ -170,6 +172,7 @@ void ABossBattleCharacter::OnAttackStart()
 void ABossBattleCharacter::OnAttackEnd()
 {
 	bIsAttacking = false;
+	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (SwordSwingPivot)
 	{
@@ -245,7 +248,7 @@ void ABossBattleCharacter::OnSwordHit(
 			FString::Printf(TEXT("Dot: %.1f"), Dot)
 		);
 
-		if (Dot < -0.7f)
+		if (Dot < -0.6f)
 		{
 			// 敵の攻撃判定を無効化
 			OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -260,7 +263,7 @@ void ABossBattleCharacter::OnSwordHit(
 				);
 			}
 			// ヒットストップ
-			StartHitStop(0.05, 0.1);
+			StartHitStop(0.03, 0.1);
 		}
 	}
 
