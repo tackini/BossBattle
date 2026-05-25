@@ -3,6 +3,8 @@
 #include "BossBattleCharacter.h"
 #include "EnemyBase.h"
 #include "BossBattleProjectile.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -42,6 +44,7 @@ ABossBattleCharacter::ABossBattleCharacter()
 	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	SwordHitBox->SetBoxExtent(FVector(10.0f, 5.0f, 40.0f));
 	SwordHitBox->SetRelativeLocation(FVector(0.0f, 0.0f, 40.0f));
+
 
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
@@ -143,6 +146,7 @@ void ABossBattleCharacter::OnAttackStart()
 {
 	SwordOffset = FVector2D(0, 0);
 	bIsAttacking = true;
+
 	// 当たり判定をON
 	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 
@@ -161,7 +165,7 @@ void ABossBattleCharacter::OnAttackStart()
 			PC->GetPlayerViewPoint(CamLoc, CamRot);
 
 			FVector Forward = CamRot.Vector();
-			FVector TargetPos = CamLoc + Forward * 100.0f;
+			FVector TargetPos = CamLoc + Forward * 50.0f;
 
 			SwordSwingPivot->SetWorldLocation(TargetPos);
 		}
@@ -172,6 +176,8 @@ void ABossBattleCharacter::OnAttackStart()
 void ABossBattleCharacter::OnAttackEnd()
 {
 	bIsAttacking = false;
+
+	// 当たり判定OFF
 	SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 	if (SwordSwingPivot)
@@ -231,13 +237,13 @@ void ABossBattleCharacter::OnSwordHit(
 	}
 
 
-	// 敵の攻撃に当たったか
+	// 剣が敵の攻撃に当たったか
 	if (OtherComp && OtherComp->ComponentHasTag("EnemyAttack"))
 	{
 		// 敵の攻撃方向を正規化して取得
 		FVector EnemyAttackDir = (GetActorLocation() - OtherComp->GetComponentLocation()).GetSafeNormal();
 
-		// 敵の攻撃と剣の攻撃の向きの近さを取得
+		// 敵の攻撃と剣の攻撃の向きの内積を計算
 		float Dot = FVector::DotProduct(CurrentSwordSwingDir, EnemyAttackDir);
 
 		// デバック
@@ -248,8 +254,19 @@ void ABossBattleCharacter::OnSwordHit(
 			FString::Printf(TEXT("Dot: %.1f"), Dot)
 		);
 
-		if (Dot < -0.6f)
+		if (Dot <= ParryThreshould)
 		{
+			// パリィすると一瞬無敵
+			bIsInvincible = true;
+
+			GetWorldTimerManager().SetTimer(
+				InvincibleTimerHandle,
+				this,
+				&ABossBattleCharacter::EndInvincible,
+				InvincibleDuration,
+				false
+			);
+
 			// 敵の攻撃判定を無効化
 			OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
@@ -262,11 +279,26 @@ void ABossBattleCharacter::OnSwordHit(
 					OtherComp->GetComponentLocation()
 				);
 			}
+
+			if (ParrySparkSystem)
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+					GetWorld(),
+					ParrySparkSystem,
+					OtherComp->GetComponentLocation()
+					);
+			}
+
 			// ヒットストップ
 			StartHitStop(0.03, 0.1);
 		}
 	}
 
+}
+
+void ABossBattleCharacter::EndInvincible()
+{
+	bIsInvincible = false;
 }
 
 // 被ダメージ処理
@@ -411,7 +443,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			float NormalizedOffset = 1.0f - (OffsetSize / MaxOffsetSize);
 
 			// カメラ前に操作用の空間を作る(空間の中心点を決める)
-			FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 60.0f);
+			FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 50.0f);
 
 			// 空間内で上下左右にどのくらい動かすかの値を決定(中心点からのずれ)
 			FVector Offset =
@@ -432,7 +464,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
 
 			// 剣の移動方向を正規化して取得
-			CurrentSwordSwingDir = MoveDir.GetSafeNormal();
+			//CurrentSwordSwingDir = MoveDir.GetSafeNormal();
 
 			FVector NewPos = FMath::VInterpTo(
 				CurrentPos,
@@ -440,9 +472,13 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				DeltaTime,
 				5.0f
 			);
+
+			// 剣を振る方向のベクトルを取得
+			FVector ActualMoveDir = NewPos - CurrentPos;
+			CurrentSwordSwingDir = ActualMoveDir.GetSafeNormal();
+
 			// 剣の位置をセット
 			SwordSwingPivot->SetWorldLocation(NewPos);
-
 
 
 			// 剣を縦と横に振る
@@ -475,26 +511,6 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				);
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
 			}
-
-			// 剣の振る速度が一定より大きいなら攻撃
-			if (MoveDir.Size() > DamageSpeedThreshould)
-			{
-				if (SwordHitBox)
-				{
-					SwordHitBox->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
-				}
-			} else
-			{
-				// 速度が足りないときはダメージ判定をOFF
-				if (SwordHitBox)
-				{
-					SwordHitBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-				}
-			}
-
 		}
-
 	}
-
 }

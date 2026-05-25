@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "Components/BoxComponent.h"
+#include "NiagaraSystem.h"
 #include "BossBattleCharacter.generated.h"
 
 class AEnemyBase;
@@ -99,6 +100,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Sword")
 	float SwordDamage = 30.0f;
 
+	UPROPERTY(EditAnywhere, Category = "Sword")
+	float ParryThreshould = -5.0f;
+
 
 	/* Audio Setting */
 
@@ -118,7 +122,6 @@ protected:
 	FVector2D SwingVelocity;		// 剣の移動速度
 	FVector CurrentSwordSwingDir;	// 剣の向き
 	bool bIsAttacking = false;		// 攻撃中かどうか
-	
 
 	/* Sword Functions */
 
@@ -170,6 +173,10 @@ protected:
 	UBossHUDWidget* HUDWidget;
 
 
+	/* Niagara */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+	UNiagaraSystem* ParrySparkSystem;
 
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
@@ -197,7 +204,7 @@ private:
 
 	// プレイヤーの被ダメージ時の無敵時間
 	UPROPERTY(EditAnywhere, Category = "Player")
-	float InvincibleDuration = 0.5f;
+	float InvincibleDuration = 1.0f;
 	bool bIsInvincible = false;
 
 	// プレイヤーの無敵タイマー
