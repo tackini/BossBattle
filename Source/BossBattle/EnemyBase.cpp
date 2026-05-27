@@ -165,7 +165,7 @@ void AEnemyBase::AttackTrace(FEnemyAttackData& AttackData)
 		CurrentLocation,
 		FQuat(AttackHitBox->GetComponentQuat()),
 		ECC_Pawn,
-		FCollisionShape::MakeBox(AttackData.HitBoxExtent)
+		FCollisionShape::MakeBox(AttackHitBox->GetScaledBoxExtent())
 	);
 
 	// “–‚½‚Á‚½‚à‚Ì‚ð‡”Ô‚ÉŠm”F
