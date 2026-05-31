@@ -100,8 +100,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Sword")
 	float SwordDamage = 30.0f;
 
+	// パリィの成功基準
 	UPROPERTY(EditAnywhere, Category = "Sword")
-	float ParryThreshould = -5.0f;
+	float ParryThreshould = -0.5f;
 
 
 	/* Audio Setting */
@@ -122,6 +123,19 @@ protected:
 	FVector2D SwingVelocity;		// 剣の移動速度
 	FVector CurrentSwordSwingDir;	// 剣の向き
 	bool bIsAttacking = false;		// 攻撃中かどうか
+
+	/* Camera Runtime */
+
+	FRotator LockedCameraRot;		// 固定時のカメラの向き
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowYawMax = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowPitchMax = 5.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowInterpSpeed = 8.0f;
 
 	/* Sword Functions */
 

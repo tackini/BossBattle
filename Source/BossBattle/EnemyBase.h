@@ -59,6 +59,10 @@ struct FEnemyAttackData
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	UAnimMontage* Montage = nullptr;
 
+	// 攻撃弾かれモンタージュ
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	UAnimMontage* AttackDeflectedMontage = nullptr;
+
 	// 攻撃ダメージ
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	float Damage = 20.0f;
@@ -106,6 +110,39 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnEnemyDead OnEnemyDead;
 
+	// 敵の攻撃を弾く
+	void AttackDeflected();
+
+	// 剣から呼び出す
+	UFUNCTION(BlueprintCallable)
+	void ReceiveSwordDamage(float Damage);
+
+	UPROPERTY()
+	AActor* Player;
+
+	// 死亡時の爆発
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFX")
+	UParticleSystem* DeathExplosion;
+
+	UPROPERTY(EditAnywhere, Category = "Sound")
+	USoundBase* DeathExplosionSound;
+
+
+	/* Getter */
+
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	float GetCurrentHP() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Status")
+	float GetMaxHP() const;
+
+	FText GetEnemyName() const
+	{
+		return EnemyStatus.EnemyName;
+	}
+
+	bool GetbIsInvincible() const;
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -121,9 +158,9 @@ protected:
 	// 敵が死んでいるかどうか
 	bool bIsDead = false;
 
-	// 隙中かどうか
-	UPROPERTY(BlueprintReadOnly)
-	bool bIsRecovery = false;
+	// スタンしているか
+	bool bIsStun = false;
+
 
 	// 被攻撃ヒット回数
 	UPROPERTY(BlueprintReadOnly)
@@ -138,7 +175,7 @@ protected:
 	// 攻撃クールタイマー
 	FTimerHandle AttackTimerHandle;
 
-	// 攻撃データ
+	// 現在の攻撃データ
 	FEnemyAttackData CurrentAttackData;
 
 	// 攻撃の当たり判定コリジョン
@@ -156,6 +193,11 @@ protected:
 
 
 	/* Combat Fuctions */
+
+	UFUNCTION()
+	void OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	void SetStun(bool NewStun);
 
 	// 攻撃出来るか
 	UFUNCTION(BlueprintCallable)
@@ -183,13 +225,6 @@ protected:
 	
 	void Die();
 
-	// 後隙のセット
-	UFUNCTION(BlueprintCallable)
-	void StartRecovery();
-
-	UFUNCTION(BlueprintCallable)
-	void EndRecovery();
-
 	// BackJump
 	UFUNCTION(BlueprintCallable)
 	void BackJump();
@@ -215,37 +250,6 @@ protected:
 	// JumpAttack
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
 	FEnemyAttackData JumpAttack;
-
-
-public:
-	// 剣から呼び出す
-	UFUNCTION(BlueprintCallable)
-	void ReceiveSwordDamage(float Damage);
-
-	UPROPERTY()
-	AActor* Player;
-
-	// 死亡時の爆発
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFX")
-	UParticleSystem* DeathExplosion;
-
-	UPROPERTY(EditAnywhere, Category = "Sound")
-	USoundBase* DeathExplosionSound;
-
-
-	/* Getter */
-	UFUNCTION(BlueprintCallable, Category = "Status")
-	float GetCurrentHP() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Status")
-	float GetMaxHP() const;
-
-	FText GetEnemyName() const
-	{
-		return EnemyStatus.EnemyName;
-	}
-
-	bool GetbIsInvincible() const;
 
 
 private:
