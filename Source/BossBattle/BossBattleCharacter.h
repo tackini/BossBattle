@@ -101,7 +101,7 @@ protected:
 	float SwordDamage = 30.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Sword")
-	float ParryThreshould = -5.0f;
+	float ParryThreshould = -0.5f;
 
 
 	/* Audio Setting */
@@ -122,6 +122,17 @@ protected:
 	FVector2D SwingVelocity;		// Œ•‚ÌˆÚ“®‘¬“x
 	FVector CurrentSwordSwingDir;	// Œ•‚ÌŒü‚«
 	bool bIsAttacking = false;		// UŒ‚’†‚©‚Ç‚¤‚©
+
+	FRotator LockedCameraRot;
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowYawMax = 8.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowPitchMax = 5.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Sword|Camera")
+	float CameraFollowInterpSpeed = 8.0f;
 
 	/* Sword Functions */
 

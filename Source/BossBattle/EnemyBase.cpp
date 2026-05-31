@@ -264,17 +264,58 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	);
 }
 
-// 後隙の開始
-void AEnemyBase::StartRecovery()
+
+void AEnemyBase::AttackDeflected()
 {
-	bIsRecovery = true;
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+	{
+		if (CurrentAttackData.AttackDeflectedMontage)
+		{
+			// 今の攻撃Montageを止める
+			Anim->Montage_Stop(0.1f);
+
+			SetStun(true);
+
+			Anim->Montage_Play(CurrentAttackData.AttackDeflectedMontage);
+
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(
+				this,
+				&AEnemyBase::OnAttackDeflectedEnded
+			);
+
+			Anim->Montage_SetEndDelegate(
+				EndDelegate,
+				CurrentAttackData.AttackDeflectedMontage
+			);
+		}
+	}
+}
+
+// スタンの終了
+void AEnemyBase::OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	SetStun(false);
 }
 
 
-// 後隙の終了
-void AEnemyBase::EndRecovery()
+// スタン状態をセット
+void AEnemyBase::SetStun(bool NewStun)
 {
-	bIsRecovery = false;
+	bIsStun = NewStun;
+
+	if (AAIController* AICon =
+		Cast<AAIController>(GetController()))
+	{
+		if (UBlackboardComponent* BB =
+			AICon->GetBlackboardComponent())
+		{
+			BB->SetValueAsBool(
+				TEXT("bIsStun"),
+				bIsStun
+			);
+		}
+	}
 }
 
 

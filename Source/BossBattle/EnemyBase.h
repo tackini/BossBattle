@@ -59,6 +59,10 @@ struct FEnemyAttackData
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	UAnimMontage* Montage = nullptr;
 
+	// 攻撃の弾かれモンタージュ
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attack")
+	UAnimMontage* AttackDeflectedMontage;
+
 	// 攻撃ダメージ
 	UPROPERTY(EditAnywhere, Category = "Attack")
 	float Damage = 20.0f;
@@ -106,6 +110,9 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnEnemyDead OnEnemyDead;
 
+	// 攻撃を弾かれる
+	void AttackDeflected();
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -115,15 +122,14 @@ protected:
 
 	/* Combat Runtime */
 
+	// スタンしているか
+	bool bIsStun = false;
+
 	// 現在攻撃可能か
 	bool bCanAttack = true;
 
 	// 敵が死んでいるかどうか
 	bool bIsDead = false;
-
-	// 隙中かどうか
-	UPROPERTY(BlueprintReadOnly)
-	bool bIsRecovery = false;
 
 	// 被攻撃ヒット回数
 	UPROPERTY(BlueprintReadOnly)
@@ -157,6 +163,12 @@ protected:
 
 	/* Combat Fuctions */
 
+	// スタンしているか
+	void SetStun(bool NewStun);
+
+	UFUNCTION()
+	void OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted);
+
 	// 攻撃出来るか
 	UFUNCTION(BlueprintCallable)
 	void TryAttack(const FEnemyAttackData& AttackData);
@@ -182,13 +194,6 @@ protected:
 	void DestroyEnemy();
 	
 	void Die();
-
-	// 後隙のセット
-	UFUNCTION(BlueprintCallable)
-	void StartRecovery();
-
-	UFUNCTION(BlueprintCallable)
-	void EndRecovery();
 
 	// BackJump
 	UFUNCTION(BlueprintCallable)

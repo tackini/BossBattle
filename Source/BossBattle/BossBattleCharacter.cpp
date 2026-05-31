@@ -159,6 +159,7 @@ void ABossBattleCharacter::OnAttackStart()
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
+			LockedCameraRot = PC->GetControlRotation();
 			FVector CamLoc;
 			FRotator CamRot;
 			// Ž‹“_‚ÌˆÊ’u‚ÆŒü‚«‚ðŽæ“¾
@@ -254,22 +255,22 @@ void ABossBattleCharacter::OnSwordHit(
 			FString::Printf(TEXT("Dot: %.1f"), Dot)
 		);
 
+		// ’e‚­‚Æˆêu–³“G
+		bIsInvincible = true;
+
+		GetWorldTimerManager().SetTimer(
+			InvincibleTimerHandle,
+			this,
+			&ABossBattleCharacter::EndInvincible,
+			InvincibleDuration,
+			false
+		);
+
+		// “G‚ÌUŒ‚”»’è‚ð–³Œø‰»
+		OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 		if (Dot <= ParryThreshould)
 		{
-			// ƒpƒŠƒB‚·‚é‚Æˆêu–³“G
-			bIsInvincible = true;
-
-			GetWorldTimerManager().SetTimer(
-				InvincibleTimerHandle,
-				this,
-				&ABossBattleCharacter::EndInvincible,
-				InvincibleDuration,
-				false
-			);
-
-			// “G‚ÌUŒ‚”»’è‚ð–³Œø‰»
-			OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 			// ƒpƒŠƒB‰¹
 			if (SwordParrySound)
 			{
@@ -291,6 +292,10 @@ void ABossBattleCharacter::OnSwordHit(
 
 			// ƒqƒbƒgƒXƒgƒbƒv
 			StartHitStop(0.03, 0.1);
+		}
+		else
+		{
+			Enemy->AttackDeflected();
 		}
 	}
 
@@ -511,6 +516,19 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				);
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
 			}
+
+			FRotator TargetRot = LockedCameraRot;
+			TargetRot.Yaw -= NormalizedX * CameraFollowYawMax;
+			TargetRot.Pitch += NormalizedY * CameraFollowPitchMax;
+
+			FRotator NewRot = FMath::RInterpTo(
+				GetControlRotation(),
+				TargetRot,
+				DeltaTime,
+				CameraFollowInterpSpeed
+			);
+
+			GetController()->SetControlRotation(NewRot);
 		}
 	}
 }
