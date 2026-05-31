@@ -264,55 +264,17 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	);
 }
 
-
-void AEnemyBase::AttackDeflected()
+// 後隙の開始
+void AEnemyBase::StartRecovery()
 {
-	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
-	{
-		if (CurrentAttackData.AttackDeflectedMontage)
-		{
-			Anim->Montage_Stop(0.1f);
-
-			SetStun(true);
-
-			Anim->Montage_Play(CurrentAttackData.AttackDeflectedMontage);
-
-			FOnMontageEnded EndDelegate;
-			EndDelegate.BindUObject(
-				this,
-				&AEnemyBase::OnAttackDeflectedEnded
-			);
-
-			Anim->Montage_SetEndDelegate(
-				EndDelegate,
-				CurrentAttackData.AttackDeflectedMontage
-			);
-		}
-	}
-}
-
-void AEnemyBase::OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	SetStun(false);
+	bIsRecovery = true;
 }
 
 
-void AEnemyBase::SetStun(bool NewStun)
+// 後隙の終了
+void AEnemyBase::EndRecovery()
 {
-	bIsStun = NewStun;
-
-	if (AAIController* AICon =
-		Cast<AAIController>(GetController()))
-	{
-		if (UBlackboardComponent* BB =
-			AICon->GetBlackboardComponent())
-		{
-			BB->SetValueAsBool(
-				TEXT("bIsStun"),
-				bIsStun
-			);
-		}
-	}
+	bIsRecovery = false;
 }
 
 
@@ -344,8 +306,6 @@ void AEnemyBase::BackJump()
 
 	// 向きのセット
 	SetActorRotation(TargetRot);
-
-	UE_LOG(LogTemp, Warning, TEXT("BackJump Montage Play"));
 
 	// ジャンプモンタージュ再生
 	if (EnemyStatus.JumpMontage)

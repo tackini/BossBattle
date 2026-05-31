@@ -159,7 +159,6 @@ void ABossBattleCharacter::OnAttackStart()
 		APlayerController* PC = Cast<APlayerController>(GetController());
 		if (PC)
 		{
-			LockedCameraRot = PC->GetControlRotation();
 			FVector CamLoc;
 			FRotator CamRot;
 			// Ž‹“_‚ÌˆÊ’u‚ÆŒü‚«‚ðŽæ“¾
@@ -255,22 +254,22 @@ void ABossBattleCharacter::OnSwordHit(
 			FString::Printf(TEXT("Dot: %.1f"), Dot)
 		);
 
-		// ’e‚­‚Æˆêu–³“G
-		bIsInvincible = true;
-
-		GetWorldTimerManager().SetTimer(
-			InvincibleTimerHandle,
-			this,
-			&ABossBattleCharacter::EndInvincible,
-			InvincibleDuration,
-			false
-		);
-
-		// “G‚ÌUŒ‚”»’è‚ð–³Œø‰»
-		OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
 		if (Dot <= ParryThreshould)
 		{
+			// ƒpƒŠƒB‚·‚é‚Æˆêu–³“G
+			bIsInvincible = true;
+
+			GetWorldTimerManager().SetTimer(
+				InvincibleTimerHandle,
+				this,
+				&ABossBattleCharacter::EndInvincible,
+				InvincibleDuration,
+				false
+			);
+
+			// “G‚ÌUŒ‚”»’è‚ð–³Œø‰»
+			OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 			// ƒpƒŠƒB‰¹
 			if (SwordParrySound)
 			{
@@ -289,12 +288,9 @@ void ABossBattleCharacter::OnSwordHit(
 					OtherComp->GetComponentLocation()
 					);
 			}
+
 			// ƒqƒbƒgƒXƒgƒbƒv
 			StartHitStop(0.03, 0.1);
-		}
-		else
-		{
-			Enemy->AttackDeflected();
 		}
 	}
 
@@ -459,13 +455,17 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			// Œ³‚ÌˆÊ’u‚©‚ç‚Ç‚ê‚­‚ç‚¢“®‚¢‚½‚©(ƒvƒŒƒCƒ„[‚ÌˆÚ“®‚à‰ÁŽZ)
 			FVector TargetPos = BasePos + Offset + PlayerVelocity * DeltaTime;
 
-			// Œ•‚ÌˆÚ“®•ûŒü‚ðŽæ“¾
+			// Œ•‚Ì“®‚«‚ðŠŠ‚ç‚©‚É‚·‚é(–Ú•W’n“_‚É­‚µ‚¸‚ÂˆÚ“®‚³‚¹‚é)
 			FVector CurrentPos = SwordSwingPivot->GetComponentLocation();
 			if (!SwordSwingPivot) return;
+
+			// Œ•‚ÌˆÚ“®•ûŒü‚ðŽæ“¾
 			FVector MoveDir = TargetPos - CurrentPos;
 			SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
 
-			// Œ•‚Ì“®‚«‚ðŠŠ‚ç‚©‚É‚·‚é
+			// Œ•‚ÌˆÚ“®•ûŒü‚ð³‹K‰»‚µ‚ÄŽæ“¾
+			//CurrentSwordSwingDir = MoveDir.GetSafeNormal();
+
 			FVector NewPos = FMath::VInterpTo(
 				CurrentPos,
 				TargetPos,
@@ -511,19 +511,6 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				);
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
 			}
-
-			FRotator CameraRot = LockedCameraRot;
-			CameraRot.Yaw -= NormalizedX * CameraFollowYawMax;
-			CameraRot.Pitch += NormalizedY * CameraFollowPitchMax;
-
-			FRotator NewRot = FMath::RInterpTo(
-				GetControlRotation(),
-				CameraRot,
-				DeltaTime,
-				CameraFollowInterpSpeed
-			);
-
-			GetController()->SetControlRotation(NewRot);
 		}
 	}
 }
