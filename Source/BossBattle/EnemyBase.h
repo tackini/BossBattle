@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/BoxComponent.h"
 #include "Particles/ParticleSystem.h"
+#include "NiagaraSystem.h"
 #include "EnemyBase.generated.h"
 
 class AEnemyBase;
@@ -34,6 +35,13 @@ struct FEnemyStatus
 	// バックジャンプモンタージュ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	UAnimMontage* JumpMontage = nullptr;
+
+	// スタンモンタージュ
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	UAnimMontage* KnockDownMontage = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
+	UAnimMontage* StandupMontage = nullptr;
 
 	// 死亡モンタージュ
 	UPROPERTY(EditAnywhere, Category = "Status");
@@ -113,6 +121,9 @@ public:
 	// 攻撃を弾かれる
 	void AttackDeflected();
 
+	// 攻撃をパリィされる
+	void AttackParried();
+
 
 protected:
 	virtual void BeginPlay() override;
@@ -167,7 +178,10 @@ protected:
 	void SetStun(bool NewStun);
 
 	UFUNCTION()
-	void OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted);
+	void StunEnd(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+	void StandingUp(UAnimMontage* Montage, bool bInterrupted);
 
 	// 攻撃出来るか
 	UFUNCTION(BlueprintCallable)
@@ -221,6 +235,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
 	FEnemyAttackData JumpAttack;
 
+
+	/* Niagara */
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effect")
+	UNiagaraSystem* EnemyDeathSystem;
 
 public:
 	// 剣から呼び出す

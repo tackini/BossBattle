@@ -10,6 +10,8 @@
 #include "TimerManager.h"
 #include "Animation/AnimInstance.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraSystem.h"
+#include "NiagaraFunctionLibrary.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 AEnemyBase::AEnemyBase()
@@ -265,6 +267,26 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 }
 
 
+void AEnemyBase::AttackParried()
+{
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+	{
+		if (EnemyStatus.KnockDownMontage)
+		{
+			Anim->Montage_Stop(0.1f);
+
+			SetStun(true);
+
+			Anim->Montage_Play(EnemyStatus.KnockDownMontage);
+
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &AEnemyBase::StandingUp);
+
+			Anim->Montage_SetEndDelegate(EndDelegate, EnemyStatus.KnockDownMontage);
+		}
+	}
+}
+
 void AEnemyBase::AttackDeflected()
 {
 	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
@@ -276,25 +298,43 @@ void AEnemyBase::AttackDeflected()
 
 			SetStun(true);
 
+			// パリィされてないとき
 			Anim->Montage_Play(CurrentAttackData.AttackDeflectedMontage);
 
 			FOnMontageEnded EndDelegate;
-			EndDelegate.BindUObject(
-				this,
-				&AEnemyBase::OnAttackDeflectedEnded
-			);
+			EndDelegate.BindUObject(this, &AEnemyBase::StunEnd);
 
-			Anim->Montage_SetEndDelegate(
-				EndDelegate,
-				CurrentAttackData.AttackDeflectedMontage
-			);
+			Anim->Montage_SetEndDelegate(EndDelegate, CurrentAttackData.AttackDeflectedMontage);
 		}
 	}
 }
 
-// スタンの終了
-void AEnemyBase::OnAttackDeflectedEnded(UAnimMontage* Montage, bool bInterrupted)
+void AEnemyBase::StandingUp(UAnimMontage* Montage, bool bInterrupted)
 {
+	if (bIsDead) return;
+
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+	{
+		if (EnemyStatus.StandupMontage)
+		{
+			Anim->Montage_Stop(0.1f);
+
+			Anim->Montage_Play(EnemyStatus.StandupMontage);
+
+			FOnMontageEnded EndDelegate;
+			EndDelegate.BindUObject(this, &AEnemyBase::StunEnd);
+
+			Anim->Montage_SetEndDelegate(EndDelegate, EnemyStatus.StandupMontage);
+		}
+	}
+}
+
+
+// スタンの終了
+void AEnemyBase::StunEnd(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (bIsDead) return;
+
 	SetStun(false);
 }
 
@@ -428,6 +468,13 @@ void AEnemyBase::Die()
 	// 敵の死亡通知
 	OnEnemyDead.Broadcast(this);
 
+	SetStun(false);
+
+	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+	{
+		Anim->Montage_Stop(0.1f);
+	}
+
 	// 死亡アニメを再生
 	if (EnemyStatus.DeadMontage)
 	{
@@ -465,25 +512,15 @@ void AEnemyBase::Die()
 void AEnemyBase::DestroyEnemy()
 {
 	// 爆発エフェクトの再生
-	if (DeathExplosion)
+	if (EnemyDeathSystem)
 	{
-		UGameplayStatics::SpawnEmitterAtLocation(
-			GetWorld(),
-			DeathExplosion,
-			GetActorLocation(),
-			GetActorRotation(),
-			GetActorScale3D()
-		);
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), EnemyDeathSystem, GetActorLocation());
 	}
 
 	// 爆発音の再生
 	if (DeathExplosionSound)
 	{
-		UGameplayStatics::PlaySoundAtLocation(
-			GetWorld(),
-			AEnemyBase::DeathExplosionSound,
-			GetActorLocation()
-		);
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AEnemyBase::DeathExplosionSound, GetActorLocation());
 	}
 
 	// 敵の削除

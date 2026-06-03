@@ -271,6 +271,8 @@ void ABossBattleCharacter::OnSwordHit(
 
 		if (Dot <= ParryThreshould)
 		{
+			Enemy->AttackParried();
+
 			// パリィ音
 			if (SwordParrySound)
 			{
@@ -281,6 +283,7 @@ void ABossBattleCharacter::OnSwordHit(
 				);
 			}
 
+			// パリィエフェクト
 			if (ParrySparkSystem)
 			{
 				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
