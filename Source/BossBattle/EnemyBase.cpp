@@ -269,6 +269,9 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 
 void AEnemyBase::AttackParried()
 {
+	if (bIsDead) return;
+	if (!CurrentAttackData.bCanBeParried) return;
+
 	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 	{
 		if (EnemyStatus.KnockDownMontage)
@@ -277,7 +280,14 @@ void AEnemyBase::AttackParried()
 
 			SetStun(true);
 
+			// 攻撃をパリィされたモンタージュ
 			Anim->Montage_Play(EnemyStatus.KnockDownMontage);
+
+			// スタン時の位置調整
+			CurrentPos = GetMesh()->GetRelativeLocation();
+			FVector MeshPos = GetMesh()->GetRelativeLocation();
+			MeshPos.Z += 20;
+			GetMesh()->SetRelativeLocation(MeshPos);
 
 			FOnMontageEnded EndDelegate;
 			EndDelegate.BindUObject(this, &AEnemyBase::StandingUp);
@@ -289,6 +299,9 @@ void AEnemyBase::AttackParried()
 
 void AEnemyBase::AttackDeflected()
 {
+	if (bIsDead) return;
+	if (!CurrentAttackData.bCanBeDeflected) return;
+
 	if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
 	{
 		if (CurrentAttackData.AttackDeflectedMontage)
@@ -298,7 +311,7 @@ void AEnemyBase::AttackDeflected()
 
 			SetStun(true);
 
-			// パリィされてないとき
+			// 攻撃を防がれたモンタージュ
 			Anim->Montage_Play(CurrentAttackData.AttackDeflectedMontage);
 
 			FOnMontageEnded EndDelegate;
@@ -317,7 +330,11 @@ void AEnemyBase::StandingUp(UAnimMontage* Montage, bool bInterrupted)
 	{
 		if (EnemyStatus.StandupMontage)
 		{
+			// 今のアニメを停止
 			Anim->Montage_Stop(0.1f);
+
+			// 位置を戻す
+			GetMesh()->SetRelativeLocation(CurrentPos);
 
 			Anim->Montage_Play(EnemyStatus.StandupMontage);
 

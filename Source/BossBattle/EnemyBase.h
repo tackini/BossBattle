@@ -83,6 +83,14 @@ struct FEnemyAttackData
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
 	float AttackCooldown = 2.0f;
 
+	// ƒpƒŠƒBo—ˆ‚éUŒ‚‚©
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	bool bCanBeParried = false;
+
+	// ’e‚¯‚éUŒ‚‚©
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	bool bCanBeDeflected = false;
+
 	// UŒ‚”»’è‚ÌêŠ
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Attack")
 	FName AttackSocketName = "hand_r";
@@ -141,6 +149,9 @@ protected:
 
 	// “G‚ª€‚ñ‚Å‚¢‚é‚©‚Ç‚¤‚©
 	bool bIsDead = false;
+
+	//@“G‚ÌŒ»İ‚ÌˆÊ’u
+	FVector CurrentPos;
 
 	// ”íUŒ‚ƒqƒbƒg‰ñ”
 	UPROPERTY(BlueprintReadOnly)
@@ -249,9 +260,6 @@ public:
 	UPROPERTY()
 	AActor* Player;
 
-	// €–S‚Ì”š”­
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VFX")
-	UParticleSystem* DeathExplosion;
 
 	UPROPERTY(EditAnywhere, Category = "Sound")
 	USoundBase* DeathExplosionSound;
