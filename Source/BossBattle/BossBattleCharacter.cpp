@@ -86,9 +86,6 @@ void ABossBattleCharacter::BeginPlay()
 	SwordMesh->ComponentTags.Add("PlayerSword");
 	SwordHitBox->ComponentTags.Add("PlayerSword");
 
-	// デバック
-	UE_LOG(LogTemp, Warning, TEXT("Start"));
-
 	// レベル上にいる敵の取得
 	TArray<AActor*> FoundEnemies;
 	UGameplayStatics::GetAllActorsOfClass(
@@ -247,14 +244,6 @@ void ABossBattleCharacter::OnSwordHit(
 		// 敵の攻撃と剣の攻撃の向きの内積を計算
 		float Dot = FVector::DotProduct(CurrentSwordSwingDir, EnemyAttackDir);
 
-		// デバック
-		GEngine->AddOnScreenDebugMessage(
-			-1,
-			2.0f,
-			FColor::Red,
-			FString::Printf(TEXT("Dot: %.1f"), Dot)
-		);
-
 		// 弾くと一瞬無敵
 		bIsInvincible = true;
 
@@ -293,8 +282,29 @@ void ABossBattleCharacter::OnSwordHit(
 					);
 			}
 
+			// パリィWidgetの表示
+			if (ParryWidgetClass)
+			{
+				ParryWidget = CreateWidget<UUserWidget>(GetWorld(), ParryWidgetClass);
+
+				ParryWidget->AddToViewport();
+
+				ParryWidget->SetVisibility(ESlateVisibility::Visible);
+
+				GetWorldTimerManager().ClearTimer(ParryTimerHandle);
+
+				GetWorldTimerManager().SetTimer(
+					ParryTimerHandle,
+					this,
+					&ABossBattleCharacter::EndParryHud,
+					0.3,
+					false
+					);
+			}
+			
+
 			// ヒットストップ
-			StartHitStop(0.03, 0.1);
+			StartHitStop(0.03, 0.05);
 		}
 		else
 		{
@@ -303,6 +313,16 @@ void ABossBattleCharacter::OnSwordHit(
 	}
 
 }
+
+
+void ABossBattleCharacter::EndParryHud()
+{
+	if (ParryWidget)
+	{
+		ParryWidget->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
 
 void ABossBattleCharacter::EndInvincible()
 {

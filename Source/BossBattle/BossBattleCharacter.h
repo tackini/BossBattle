@@ -100,6 +100,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Sword")
 	float SwordDamage = 30.0f;
 
+	// パリィ発生基準
 	UPROPERTY(EditAnywhere, Category = "Sword")
 	float ParryThreshould = -0.5f;
 
@@ -183,6 +184,12 @@ protected:
 	UPROPERTY()
 	UBossHUDWidget* HUDWidget;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> ParryWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* ParryWidget;
+
 
 	/* Niagara */
 
@@ -218,11 +225,17 @@ private:
 	float InvincibleDuration = 1.0f;
 	bool bIsInvincible = false;
 
+	/* TimerHandle */
+
 	// プレイヤーの無敵タイマー
 	FTimerHandle InvincibleTimerHandle;
 
 	// 剣のヒットストップタイマー
 	FTimerHandle HitStopTimerHandle;
+
+	// パリィのタイマー
+	FTimerHandle ParryTimerHandle;
+
 
 	// 無敵時間の終了
 	void EndInvincible();
@@ -230,6 +243,9 @@ private:
 	// 剣のヒットストップ終了
 	UFUNCTION()
 	void EndHitStop();
+
+	// パリィHUDの終了
+	void EndParryHud();
 
 };
 
