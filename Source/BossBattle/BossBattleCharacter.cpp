@@ -430,9 +430,10 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 	// 剣の操作に変更
 	if (bIsAttacking) 
 	{
-		// 剣の移動制限
 		SwordOffset.X += -LookAxisVector.X * 3.0f;
 		SwordOffset.Y += -LookAxisVector.Y * 3.0f;
+
+		// 剣の移動制限
 		SwordOffset.X = FMath::Clamp(SwordOffset.X, -MaxSwordRangeX, MaxSwordRangeX);
 		SwordOffset.Y = FMath::Clamp(SwordOffset.Y, -MaxSwordRangeY, MaxSwordRangeY);
 
@@ -459,16 +460,16 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			FVector CamLoc;
 			FRotator CamRot;
 			PC->GetPlayerViewPoint(CamLoc, CamRot);
-
 			
+			// 回転情報を回転行列に変換
 			FVector Forward = CamRot.Vector();
 			FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
 			FVector Up = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
 			
-			// 剣が中心にあるほど奥にセットされる
+			// 剣が中心にあるほど画面奥にセットされる
 			float OffsetSize = SwordOffset.Size();
 			float MaxOffsetSize = 60;
-			float NormalizedOffset = 1.0f - (OffsetSize / MaxOffsetSize);
+			float NormalizedOffset = 1.0f - FMath::Clamp(OffsetSize / MaxOffsetSize, 0.0f, 1.0f);
 
 			// カメラ前に操作用の空間を作る(空間の中心点を決める)
 			FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 50.0f);
@@ -527,7 +528,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				float BladeAngle = FMath::RadiansToDegrees(
 					FMath::Atan2(LocalY, LocalZ)
 				);
-				BladeAngle = FMath::Clamp(BladeAngle, -80.0f, 80.0f);
+				BladeAngle = FMath::Clamp(BladeAngle, -75.0f, 75.0f);
 
 				FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
 				FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);
@@ -540,6 +541,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 				SwordRollPivot->SetRelativeRotation(NewRollRot);
 			}
 
+			// 剣の位置に追従するカメラ回転を計算
 			FRotator TargetRot = LockedCameraRot;
 			TargetRot.Yaw -= NormalizedX * CameraFollowYawMax;
 			TargetRot.Pitch += NormalizedY * CameraFollowPitchMax;
