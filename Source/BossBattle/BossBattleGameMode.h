@@ -13,6 +13,10 @@ class ABossBattleGameMode : public AGameModeBase
 
 public:
 	ABossBattleGameMode();
+
+protected:
+	virtual void BeginPlay() override;
+
 };
 
 

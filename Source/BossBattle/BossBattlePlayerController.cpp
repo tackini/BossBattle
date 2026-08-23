@@ -4,6 +4,7 @@
 #include "BossBattlePlayerController.h"
 #include "EnhancedInputSubsystems.h"
 #include "Engine/LocalPlayer.h"
+#include "Blueprint/UserWidget.h"
 
 void ABossBattlePlayerController::BeginPlay()
 {
@@ -15,4 +16,25 @@ void ABossBattlePlayerController::BeginPlay()
 		// add the mapping context so we get controls
 		Subsystem->AddMappingContext(InputMappingContext, 0);
 	}
+}
+
+// ƒNƒŠƒA,€–S‚ÌUI•\¦
+void ABossBattlePlayerController::ShowEndScreen()
+{
+    if (EndWidgetClass)
+    {
+        EndWidget = CreateWidget<UUserWidget>(this, EndWidgetClass);
+        EndWidget->AddToViewport();
+
+        // UI‘€ì
+        bShowMouseCursor = true;
+
+        FInputModeUIOnly InputMode;
+        InputMode.SetLockMouseToViewportBehavior(
+            EMouseLockMode::DoNotLock
+        );
+
+        SetInputMode(InputMode);
+        FlushPressedKeys();
+    }
 }

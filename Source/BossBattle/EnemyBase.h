@@ -11,7 +11,7 @@
 
 class AEnemyBase;
 
-// 全体に死亡通知を渡す
+// 別Objectに通知を渡す
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEnemyDead, AEnemyBase*, DeadEnemy);
 
 // 敵のステータス構造体

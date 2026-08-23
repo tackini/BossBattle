@@ -19,6 +19,8 @@ class UBossHUDWidget;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+// 別Objectに通知を送る
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerDead, ABossBattleCharacter*, PlayerDead);
 
 USTRUCT(BlueprintType)
 struct FPlayerStatus
@@ -61,10 +63,26 @@ class BOSSBATTLE_API ABossBattleCharacter : public ACharacter
 public:
 	ABossBattleCharacter();
 
+	// プレイヤーの死亡通知
+	UPROPERTY(BlueprintAssignable)
+	FOnPlayerDead OnPlayerDead;
 
 protected:
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime) override;
+
+	/* Status Runtime */
+
+	// プレイヤーが死んでいるかどうか
+	bool bIsDead = false;
+
+	// 攻撃できるか
+	bool bCanAttack = true;
+
+	/* Status Function */
+	
+	// プレイヤーの死亡処理
+	void Die();
 
 
 	/* Components */

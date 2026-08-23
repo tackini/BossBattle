@@ -7,6 +7,7 @@
 #include "BossBattlePlayerController.generated.h"
 
 class UInputMappingContext;
+class UUserWidget;
 
 /**
  *
@@ -23,9 +24,26 @@ protected:
 	UInputMappingContext* InputMappingContext;
 
 	// Begin Actor interface
+
+
 protected:
 
 	virtual void BeginPlay() override;
 
 	// End Actor interface
+
+	/* UI */
+
+	// ÉQÅ[ÉÄèIóπéûÇÃâÊñ 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+	TSubclassOf<UUserWidget> EndWidgetClass;
+
+	UPROPERTY()
+	UUserWidget* EndWidget;
+
+public:
+
+	/* Function */
+
+	void ShowEndScreen();
 };

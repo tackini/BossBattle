@@ -12,3 +12,18 @@ ABossBattleGameMode::ABossBattleGameMode()
 	DefaultPawnClass = PlayerPawnClassFinder.Class;
 
 }
+
+void ABossBattleGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (PC)
+	{
+		PC->bShowMouseCursor = false;
+
+		FInputModeGameOnly InputMode;
+		PC->SetInputMode(InputMode);
+	}
+
+}

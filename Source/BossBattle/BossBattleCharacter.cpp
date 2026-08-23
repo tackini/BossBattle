@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "BossBattleCharacter.h"
+#include "BossBattlePlayerController.h"
 #include "EnemyBase.h"
 #include "BossBattleProjectile.h"
 #include "NiagaraFunctionLibrary.h"
@@ -141,6 +142,8 @@ void ABossBattleCharacter::BeginPlay()
 //	右クリックを押すと攻撃開始
 void ABossBattleCharacter::OnAttackStart()
 {
+	if (!bIsDead && !bCanAttack) return;
+
 	SwordOffset = FVector2D(0, 0);
 	bIsAttacking = true;
 
@@ -185,6 +188,7 @@ void ABossBattleCharacter::OnAttackEnd()
 			FAttachmentTransformRules::SnapToTargetIncludingScale,
 			TEXT("hand_r_Socket")
 		);
+		SwordSwingPivot->SetRelativeLocation({ -7.5, 2.5, 0 });
 	}
 }
 
@@ -233,6 +237,7 @@ void ABossBattleCharacter::OnSwordHit(
 
 		}
 	}
+
 
 
 	// 剣が敵の攻撃に当たったか
@@ -332,7 +337,7 @@ void ABossBattleCharacter::EndInvincible()
 // 被ダメージ処理
 void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 {
-	if (bIsInvincible || PlayerStatus.CurrentHP <= 0.0f) return;
+	if (bIsInvincible || bIsDead) return;
 
 	PlayerStatus.CurrentHP = FMath::Max(0.0f, PlayerStatus.CurrentHP - Damage);
 
@@ -344,6 +349,30 @@ void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 			: 0.0f;
 
 		HUDWidget->UpdatePlayerHP(HPPercent);
+	}
+
+	if (PlayerStatus.CurrentHP <= 0.0f)
+	{
+		Die();
+	}
+}
+
+// 死亡処理
+void ABossBattleCharacter::Die()
+{
+	bIsDead = true;
+	bCanAttack = false;
+
+	OnPlayerDead.Broadcast(this);
+	
+	if (bIsAttacking)
+	{
+		OnAttackEnd();
+	}
+
+	if (ABossBattlePlayerController* PC = Cast<ABossBattlePlayerController>(GetController()))
+	{
+		PC->ShowEndScreen();
 	}
 }
 
