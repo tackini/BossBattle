@@ -159,6 +159,9 @@ protected:
 	void OnAttackEnd();
 	void Move(const FInputActionValue& Value);
 	void Look(const FInputActionValue& Value);
+	FVector SetSwordLocation(float DeltaTime, FVector CamLoc, FVector Forward, FVector Right, FVector Up);
+	void RotationSword(float DeltaTime, FVector MoveDir, FVector Right, FVector Up);
+	void RotationCamera(float DeltaTime, float NormalizedX, float NormalizedY);
 
 	// Œ•‚ÌÕ“Ë”»’èˆ—
 	UFUNCTION()

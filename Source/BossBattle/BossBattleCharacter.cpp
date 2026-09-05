@@ -409,7 +409,6 @@ void ABossBattleCharacter::EndHitStop()
 	);
 }
 
-
 //////////////////////////////////////////////////////////////////////////// Input
 
 void ABossBattleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -494,50 +493,9 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			FVector Forward = CamRot.Vector();
 			FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
 			FVector Up = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
-			
-			// 剣が中心にあるほど画面奥にセットされる
-			float OffsetSize = SwordOffset.Size();
-			float MaxOffsetSize = 60;
-			float NormalizedOffset = 1.0f - FMath::Clamp(OffsetSize / MaxOffsetSize, 0.0f, 1.0f);
 
-			// カメラ前に操作用の空間を作る(空間の中心点を決める)
-			FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 50.0f);
-
-			// 空間内で上下左右にどのくらい動かすかの値を決定(中心点からのずれ)
-			FVector Offset =
-				Right * -SwordOffset.X * 3.0f + Up * SwordOffset.Y * 5.0f;
-
-			// プレイヤーの移動速度を取得
-			FVector PlayerVelocity = GetVelocity();
-
-			// 元の位置からどれくらい動いたか(プレイヤーの移動も加算)
-			FVector TargetPos = BasePos + Offset + PlayerVelocity * DeltaTime;
-
-			// 剣の動きを滑らかにする(目標地点に少しずつ移動させる)
-			FVector CurrentPos = SwordSwingPivot->GetComponentLocation();
-			if (!SwordSwingPivot) return;
-
-			// 剣の移動方向を取得
-			FVector MoveDir = TargetPos - CurrentPos;
-			SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
-
-			// 剣の移動方向を正規化して取得
-			//CurrentSwordSwingDir = MoveDir.GetSafeNormal();
-
-			FVector NewPos = FMath::VInterpTo(
-				CurrentPos,
-				TargetPos,
-				DeltaTime,
-				5.0f
-			);
-
-			// 剣を振る方向のベクトルを取得
-			FVector ActualMoveDir = NewPos - CurrentPos;
-			CurrentSwordSwingDir = ActualMoveDir.GetSafeNormal();
-
-			// 剣の位置をセット
-			SwordSwingPivot->SetWorldLocation(NewPos);
-
+			//　剣の位置をセット
+			FVector MoveDir = SetSwordLocation(DeltaTime, CamLoc, Forward, Right, Up);
 
 			// 剣を縦と横に振る
 			FRotator SwingRot = CamRot;
@@ -547,42 +505,100 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -30.0f);
 			SwordSwingPivot->SetWorldRotation(SwingRot);
 
-
 			// 剣の振る速度が一定以上なら回転
-			if (MoveDir.Size() > 5.0f)
-			{
-				// カメラのローカル空間での移動方向を取得
-				float LocalY = FVector::DotProduct(MoveDir.GetSafeNormal(), Right);
-				float LocalZ = FVector::DotProduct(MoveDir.GetSafeNormal(), Up);
-				float BladeAngle = FMath::RadiansToDegrees(
-					FMath::Atan2(LocalY, LocalZ)
-				);
-				BladeAngle = FMath::Clamp(BladeAngle, -75.0f, 75.0f);
-
-				FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
-				FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);
-				FRotator NewRollRot = FMath::RInterpTo(
-					CurrentRollRot,
-					TargetRollRot,
-					DeltaTime,
-					5.0f
-				);
-				SwordRollPivot->SetRelativeRotation(NewRollRot);
-			}
-
+			RotationSword(DeltaTime, MoveDir, Right, Up);
+			
 			// 剣の位置に追従するカメラ回転を計算
-			FRotator TargetRot = LockedCameraRot;
-			TargetRot.Yaw -= NormalizedX * CameraFollowYawMax;
-			TargetRot.Pitch += NormalizedY * CameraFollowPitchMax;
-
-			FRotator NewRot = FMath::RInterpTo(
-				GetControlRotation(),
-				TargetRot,
-				DeltaTime,
-				CameraFollowInterpSpeed
-			);
-
-			GetController()->SetControlRotation(NewRot);
+			RotationCamera(DeltaTime, NormalizedX, NormalizedY);
 		}
 	}
+}
+
+FVector ABossBattleCharacter::SetSwordLocation(float DeltaTime, FVector CamLoc, FVector Forward, FVector Right, FVector Up)
+{
+	// 剣が中心にあるほど画面奥にセットされる
+	float OffsetSize = SwordOffset.Size();
+	float MaxOffsetSize = 60;
+	float NormalizedOffset = 1.0f - FMath::Clamp(OffsetSize / MaxOffsetSize, 0.0f, 1.0f);
+
+	// カメラ前に操作用の空間を作る(空間の中心点を決める)
+	FVector BasePos = CamLoc + Forward * (80.0f + NormalizedOffset * 50.0f);
+
+	// 空間内で上下左右にどのくらい動かすかの値を決定(中心点からのずれ)
+	FVector Offset =
+		Right * -SwordOffset.X * 3.0f + Up * SwordOffset.Y * 5.0f;
+
+	// プレイヤーの移動速度を取得
+	FVector PlayerVelocity = GetVelocity();
+
+	// 元の位置からどれくらい動いたか(プレイヤーの移動も加算)
+	FVector TargetPos = BasePos + Offset + PlayerVelocity * DeltaTime;
+
+	// 剣の動きを滑らかにする(目標地点に少しずつ移動させる)
+	FVector CurrentPos = SwordSwingPivot->GetComponentLocation();
+
+	// 剣の移動方向を取得
+	FVector MoveDir = TargetPos - CurrentPos;
+	SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
+
+	// 剣の移動方向を正規化して取得
+	//CurrentSwordSwingDir = MoveDir.GetSafeNormal();
+
+	FVector NewPos = FMath::VInterpTo(
+		CurrentPos,
+		TargetPos,
+		DeltaTime,
+		5.0f
+	);
+
+	// 剣を振る方向のベクトルを取得
+	FVector ActualMoveDir = NewPos - CurrentPos;
+	CurrentSwordSwingDir = ActualMoveDir.GetSafeNormal();
+
+	// 剣の位置をセット
+	SwordSwingPivot->SetWorldLocation(NewPos);
+
+	return MoveDir;
+}
+
+// 剣の振る速度が一定以上なら回転
+void ABossBattleCharacter::RotationSword(float DeltaTime, FVector MoveDir, FVector Right, FVector Up)
+{
+	if (MoveDir.Size() > 5.0f)
+	{
+		// カメラのローカル空間での移動方向を取得
+		float LocalY = FVector::DotProduct(MoveDir.GetSafeNormal(), Right);
+		float LocalZ = FVector::DotProduct(MoveDir.GetSafeNormal(), Up);
+		float BladeAngle = FMath::RadiansToDegrees(
+			FMath::Atan2(LocalY, LocalZ)
+		);
+		BladeAngle = FMath::Clamp(BladeAngle, -75.0f, 75.0f);
+
+		FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
+		FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);
+		FRotator NewRollRot = FMath::RInterpTo(
+			CurrentRollRot,
+			TargetRollRot,
+			DeltaTime,
+			5.0f
+		);
+		SwordRollPivot->SetRelativeRotation(NewRollRot);
+	}
+}
+
+// 剣の位置に追従するカメラ回転を計算
+void ABossBattleCharacter::RotationCamera(float DeltaTime, float NormalizedX, float NormalizedY)
+{
+	FRotator TargetRot = LockedCameraRot;
+	TargetRot.Yaw -= NormalizedX * CameraFollowYawMax;
+	TargetRot.Pitch += NormalizedY * CameraFollowPitchMax;
+
+	FRotator NewRot = FMath::RInterpTo(
+		GetControlRotation(),
+		TargetRot,
+		DeltaTime,
+		CameraFollowInterpSpeed
+	);
+
+	GetController()->SetControlRotation(NewRot);
 }
