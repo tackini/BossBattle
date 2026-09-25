@@ -266,7 +266,7 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	);
 }
 
-
+// 攻撃をパリィされたときの処理
 void AEnemyBase::AttackParried()
 {
 	if (bIsDead) return;
@@ -297,6 +297,7 @@ void AEnemyBase::AttackParried()
 	}
 }
 
+// 攻撃を弾かれたときの処理
 void AEnemyBase::AttackDeflected()
 {
 	if (bIsDead) return;
@@ -322,6 +323,7 @@ void AEnemyBase::AttackDeflected()
 	}
 }
 
+// パリィ復帰時の処理
 void AEnemyBase::StandingUp(UAnimMontage* Montage, bool bInterrupted)
 {
 	if (bIsDead) return;
@@ -345,7 +347,6 @@ void AEnemyBase::StandingUp(UAnimMontage* Montage, bool bInterrupted)
 		}
 	}
 }
-
 
 // スタンの終了
 void AEnemyBase::StunEnd(UAnimMontage* Montage, bool bInterrupted)

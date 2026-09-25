@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
 #include "Components/BoxComponent.h"
+#include "Camera/CameraShakeBase.h"
 #include "NiagaraSystem.h"
 #include "BossBattleCharacter.generated.h"
 
@@ -162,6 +163,7 @@ protected:
 	FVector SetSwordLocation(float DeltaTime, FVector CamLoc, FVector Forward, FVector Right, FVector Up);
 	void RotationSword(float DeltaTime, FVector MoveDir, FVector Right, FVector Up);
 	void RotationCamera(float DeltaTime, float NormalizedX, float NormalizedY);
+	void PlayerSwordHitCameraShake();
 
 	// 剣の衝突判定処理
 	UFUNCTION()
@@ -178,6 +180,14 @@ protected:
 	UFUNCTION()
 	void StartHitStop(float Duration, float TimeScale);
 
+	// パリィ成功時処理
+	UFUNCTION()
+	void HandleParryResult(AEnemyBase* Enemy, UPrimitiveComponent* OtherComp, float Dot);
+
+	// 剣攻撃のダメージ判定・処理
+	UFUNCTION()
+	void TryApplySwordDamage(AEnemyBase* Enemy);
+
 
 	/* Input Action */
 
@@ -188,6 +198,10 @@ protected:
 	// 視点操作入力
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
+
+	// 剣攻撃ヒット時のカメラの揺れ
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> SwordHitCameraShake;
 
 
 	/* Struct */

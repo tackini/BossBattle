@@ -20,6 +20,7 @@
 #include "TimerManager.h"
 #include "InputActionValue.h"
 #include "Engine/LocalPlayer.h"
+#include "Camera/CameraShakeBase.h"
 
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
@@ -206,39 +207,9 @@ void ABossBattleCharacter::OnSwordHit(
 	AEnemyBase* Enemy = Cast<AEnemyBase>(OtherActor);
 	if (Enemy)
 	{
-		// 剣の速度が一定以上かつ無敵でないならダメージを与える
-		if (SwingVelocity.Size() >= DamageSpeedThreshould && Enemy->GetbIsInvincible() == false)
-		{
-			// ダメージ処理
-			Enemy->ReceiveSwordDamage(SwordDamage);
-
-			// 敵のHPPercentの更新
-			if (HUDWidget)
-			{
-				float HPPercent = Enemy->GetMaxHP() > 0.0f
-					? Enemy->GetCurrentHP() / Enemy->GetMaxHP()
-					: 0.0f;
-
-				HUDWidget->UpdateEnemyHP(HPPercent);
-			}
-
-			// 剣ヒット音
-			if (SwordHitSound)
-			{
-				UGameplayStatics::PlaySoundAtLocation(
-					GetWorld(),
-					SwordHitSound,
-					Enemy->GetActorLocation()
-				);
-			}
-
-			// ヒットストップ
-			StartHitStop(0.013f, 0.1f);
-
-		}
+		// 剣攻撃のダメージ判定・処理
+		TryApplySwordDamage(Enemy);
 	}
-
-
 
 	// 剣が敵の攻撃に当たったか
 	if (OtherComp && OtherComp->ComponentHasTag("EnemyAttack"))
@@ -263,60 +234,122 @@ void ABossBattleCharacter::OnSwordHit(
 		// 敵の攻撃判定を無効化
 		OtherComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-		if (Dot <= ParryThreshould)
+		// パリィ成功時処理
+		HandleParryResult(Enemy, OtherComp, Dot);
+	}
+}
+
+// 剣攻撃のダメージ判定・処理
+void ABossBattleCharacter::TryApplySwordDamage(AEnemyBase* Enemy)
+{
+	// 剣の速度が一定以上かつ無敵でないならダメージを与える
+	if (SwingVelocity.Size() >= DamageSpeedThreshould && Enemy->GetbIsInvincible() == false)
+	{
+		// ダメージ処理
+		Enemy->ReceiveSwordDamage(SwordDamage);
+
+		// 敵のHPPercentの更新
+		if (HUDWidget)
 		{
-			Enemy->AttackParried();
+			float HPPercent = Enemy->GetMaxHP() > 0.0f
+				? Enemy->GetCurrentHP() / Enemy->GetMaxHP()
+				: 0.0f;
 
-			// パリィ音
-			if (SwordParrySound)
-			{
-				UGameplayStatics::PlaySoundAtLocation(
-					GetWorld(),
-					SwordParrySound,
-					OtherComp->GetComponentLocation()
-				);
-			}
-
-			// パリィエフェクト
-			if (ParrySparkSystem)
-			{
-				UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-					GetWorld(),
-					ParrySparkSystem,
-					OtherComp->GetComponentLocation()
-					);
-			}
-
-			// パリィWidgetの表示
-			if (ParryWidgetClass)
-			{
-				ParryWidget = CreateWidget<UUserWidget>(GetWorld(), ParryWidgetClass);
-
-				ParryWidget->AddToViewport();
-
-				ParryWidget->SetVisibility(ESlateVisibility::Visible);
-
-				GetWorldTimerManager().ClearTimer(ParryTimerHandle);
-
-				GetWorldTimerManager().SetTimer(
-					ParryTimerHandle,
-					this,
-					&ABossBattleCharacter::EndParryHud,
-					0.3,
-					false
-					);
-			}
-			
-
-			// ヒットストップ
-			StartHitStop(0.03, 0.05);
+			HUDWidget->UpdateEnemyHP(HPPercent);
 		}
-		else
+
+		// 剣ヒット音
+		if (SwordHitSound)
 		{
-			Enemy->AttackDeflected();
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				SwordHitSound,
+				Enemy->GetActorLocation()
+			);
 		}
+
+		// 剣攻撃ヒット時のカメラの揺れ
+		PlayerSwordHitCameraShake();
+
+		// ヒットストップ
+		StartHitStop(0.015f, 0.1f);
+	}
+}
+
+
+// パリィ成功時処理
+void ABossBattleCharacter::HandleParryResult(AEnemyBase* Enemy, UPrimitiveComponent* OtherComp, float Dot)
+{
+	if (Dot <= ParryThreshould)
+	{
+		Enemy->AttackParried();
+
+		// パリィ音
+		if (SwordParrySound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(
+				GetWorld(),
+				SwordParrySound,
+				OtherComp->GetComponentLocation()
+			);
+		}
+
+		// パリィエフェクト
+		if (ParrySparkSystem)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				GetWorld(),
+				ParrySparkSystem,
+				OtherComp->GetComponentLocation()
+			);
+		}
+
+		// パリィWidgetの表示
+		if (ParryWidgetClass)
+		{
+			ParryWidget = CreateWidget<UUserWidget>(GetWorld(), ParryWidgetClass);
+
+			ParryWidget->AddToViewport();
+
+			ParryWidget->SetVisibility(ESlateVisibility::Visible);
+
+			GetWorldTimerManager().ClearTimer(ParryTimerHandle);
+
+			GetWorldTimerManager().SetTimer(
+				ParryTimerHandle,
+				this,
+				&ABossBattleCharacter::EndParryHud,
+				0.3,
+				false
+			);
+		}
+
+		// ヒットストップ
+		StartHitStop(0.03, 0.05);
+	}
+	else
+	{
+		Enemy->AttackDeflected();
+	}
+}
+
+// 剣攻撃ヒット時のカメラの揺れ
+void ABossBattleCharacter::PlayerSwordHitCameraShake()
+{
+	if (!SwordHitCameraShake)
+	{
+		return;
 	}
 
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraShake(
+			SwordHitCameraShake,
+			1.0f
+		);
+	}
 }
 
 
@@ -494,7 +527,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			FVector Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
 			FVector Up = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Z);
 
-			//　剣の位置をセット
+			// 剣の位置をセット
 			FVector MoveDir = SetSwordLocation(DeltaTime, CamLoc, Forward, Right, Up);
 
 			// 剣を縦と横に振る
@@ -514,6 +547,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 	}
 }
 
+// 剣の位置をセット
 FVector ABossBattleCharacter::SetSwordLocation(float DeltaTime, FVector CamLoc, FVector Forward, FVector Right, FVector Up)
 {
 	// 剣が中心にあるほど画面奥にセットされる
