@@ -163,7 +163,30 @@ protected:
 	FVector SetSwordLocation(float DeltaTime, FVector CamLoc, FVector Forward, FVector Right, FVector Up);
 	void RotationSword(float DeltaTime, FVector MoveDir, FVector Right, FVector Up);
 	void RotationCamera(float DeltaTime, float NormalizedX, float NormalizedY);
+
+	
+	/* CameraShake */
+
+	// 剣攻撃ヒット時のカメラの揺れ
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> SwordHitCameraShake;
+
+	// 被ダメージ時のカメラの揺れ
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> ReceiveDamageCameraShake;
+
+	// 移動時のカメラの揺れ
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> MoveCameraShake;
+
+	UCameraShakeBase* MoveCameraShakeInstance = nullptr;
+
+	// カメラの揺れ
 	void PlayerSwordHitCameraShake();
+	void PlayerReceiveDamageCameraShake();
+	void StartMoveCameraShake();
+	void StopMoveCameraShake();
+	void UpdateMoveCameraShake();
 
 	// 剣の衝突判定処理
 	UFUNCTION()
@@ -198,10 +221,6 @@ protected:
 	// 視点操作入力
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	class UInputAction* LookAction;
-
-	// 剣攻撃ヒット時のカメラの揺れ
-	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
-	TSubclassOf<UCameraShakeBase> SwordHitCameraShake;
 
 
 	/* Struct */

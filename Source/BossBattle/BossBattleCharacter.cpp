@@ -352,6 +352,82 @@ void ABossBattleCharacter::PlayerSwordHitCameraShake()
 	}
 }
 
+// 被ダメージ時のカメラの揺れ
+void ABossBattleCharacter::PlayerReceiveDamageCameraShake()
+{
+	if (!ReceiveDamageCameraShake)
+	{
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraShake(
+			ReceiveDamageCameraShake,
+			1.0f
+		);
+	}
+}
+
+// 移動時のカメラの揺れ開始時
+void ABossBattleCharacter::StartMoveCameraShake()
+{
+	if (!MoveCameraShake || !GetController())
+	{
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		MoveCameraShakeInstance = PC->PlayerCameraManager->StartCameraShake(MoveCameraShake);
+	}
+}
+
+// 移動時のカメラの揺れ終了時
+void ABossBattleCharacter::StopMoveCameraShake()
+{
+	if (!GetController())
+	{
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		if (PC && PC->PlayerCameraManager && MoveCameraShakeInstance)
+		{
+			PC->PlayerCameraManager->StopCameraShake(MoveCameraShakeInstance);
+			MoveCameraShakeInstance = nullptr;
+		}
+	}
+}
+
+void ABossBattleCharacter::UpdateMoveCameraShake()
+{
+	// プレイヤーの移動速度を取得
+	const float Speed = GetVelocity().Size2D();
+
+	if (Speed > 10.0f)
+	{
+		if (!MoveCameraShakeInstance)
+		{
+			StartMoveCameraShake();
+		}
+	}
+	else
+	{
+		if (MoveCameraShakeInstance)
+		{
+			StopMoveCameraShake();
+		}
+	}
+}
+
 
 void ABossBattleCharacter::EndParryHud()
 {
@@ -373,6 +449,9 @@ void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 	if (bIsInvincible || bIsDead) return;
 
 	PlayerStatus.CurrentHP = FMath::Max(0.0f, PlayerStatus.CurrentHP - Damage);
+
+	// 被ダメージ時のカメラの揺れ
+	PlayerReceiveDamageCameraShake();
 
 	// HPPercentの計算と更新
 	if (HUDWidget)
@@ -510,6 +589,9 @@ void ABossBattleCharacter::Look(const FInputActionValue& Value)
 void ABossBattleCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// 移動時のカメラの揺れ
+	UpdateMoveCameraShake();
 
 	if (bIsAttacking && SwordSwingPivot) {
 
