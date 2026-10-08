@@ -231,6 +231,10 @@ protected:
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicMaterial;
 
+	// ”ÍˆÍ‚ÉƒJƒƒ‰‚Ì—h‚ê
+	UFUNCTION(BlueprintCallable)
+	void PlayAOECameraShake(TSubclassOf<UCameraShakeBase> CameraShake);
+
 
 	/* Struct */
 

@@ -266,6 +266,24 @@ void AEnemyBase::ReceiveSwordDamage(float Damage)
 	);
 }
 
+// ”ÍˆÍ‚ÌƒJƒƒ‰‚Ì—h‚ê
+void AEnemyBase::PlayAOECameraShake(TSubclassOf<UCameraShakeBase> CameraShake)
+{
+	if (!CameraShake)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlayWorldCameraShake(
+		GetWorld(),
+		CameraShake,
+		GetActorLocation(),
+		200,
+		800,
+		1.0f
+	);
+}
+
 // UŒ‚‚ğƒpƒŠƒB‚³‚ê‚½‚Æ‚«‚Ìˆ—
 void AEnemyBase::AttackParried()
 {
@@ -539,6 +557,12 @@ void AEnemyBase::DestroyEnemy()
 	if (DeathExplosionSound)
 	{
 		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AEnemyBase::DeathExplosionSound, GetActorLocation());
+	}
+
+	ABossBattleCharacter* PlayerCharacter = Cast<ABossBattleCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
+	if (PlayerCharacter)
+	{
+		PlayerCharacter->PlayExplosionCameraShake();
 	}
 
 	// “G‚Ìíœ

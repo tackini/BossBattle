@@ -269,7 +269,7 @@ void ABossBattleCharacter::TryApplySwordDamage(AEnemyBase* Enemy)
 		}
 
 		// 剣攻撃ヒット時のカメラの揺れ
-		PlayerSwordHitCameraShake();
+		PlaySwordHitCameraShake();
 
 		// ヒットストップ
 		StartHitStop(0.015f, 0.1f);
@@ -334,7 +334,7 @@ void ABossBattleCharacter::HandleParryResult(AEnemyBase* Enemy, UPrimitiveCompon
 }
 
 // 剣攻撃ヒット時のカメラの揺れ
-void ABossBattleCharacter::PlayerSwordHitCameraShake()
+void ABossBattleCharacter::PlaySwordHitCameraShake()
 {
 	if (!SwordHitCameraShake)
 	{
@@ -353,7 +353,7 @@ void ABossBattleCharacter::PlayerSwordHitCameraShake()
 }
 
 // 被ダメージ時のカメラの揺れ
-void ABossBattleCharacter::PlayerReceiveDamageCameraShake()
+void ABossBattleCharacter::PlayReceiveDamageCameraShake()
 {
 	if (!ReceiveDamageCameraShake)
 	{
@@ -364,10 +364,23 @@ void ABossBattleCharacter::PlayerReceiveDamageCameraShake()
 
 	if (PC && PC->PlayerCameraManager)
 	{
-		PC->PlayerCameraManager->StartCameraShake(
-			ReceiveDamageCameraShake,
-			1.0f
-		);
+		PC->PlayerCameraManager->StartCameraShake(ReceiveDamageCameraShake, 1.0f);
+	}
+}
+
+// 爆発時のカメラの揺れ
+void ABossBattleCharacter::PlayExplosionCameraShake()
+{
+	if (!ExplosionCameraShake)
+	{
+		return;
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetController());
+
+	if (PC && PC->PlayerCameraManager)
+	{
+		PC->PlayerCameraManager->StartCameraShake(ExplosionCameraShake, 1.0f);
 	}
 }
 
@@ -451,7 +464,7 @@ void ABossBattleCharacter::ReceiveEnemyDamage(float Damage)
 	PlayerStatus.CurrentHP = FMath::Max(0.0f, PlayerStatus.CurrentHP - Damage);
 
 	// 被ダメージ時のカメラの揺れ
-	PlayerReceiveDamageCameraShake();
+	PlayReceiveDamageCameraShake();
 
 	// HPPercentの計算と更新
 	if (HUDWidget)

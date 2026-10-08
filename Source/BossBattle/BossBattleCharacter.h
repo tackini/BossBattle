@@ -68,6 +68,23 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnPlayerDead OnPlayerDead;
 
+	/** Returns Mesh1P subobject **/
+	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
+	/** Returns FirstPersonCameraComponent subobject **/
+	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	// “G‚©‚ç‚Ìƒ_ƒ[ƒWˆ—
+	UFUNCTION(BlueprintCallable)
+	void ReceiveEnemyDamage(float Damage);
+
+	// “G‚Ìæ“¾
+	UPROPERTY()
+	AEnemyBase* CurrentEnemy;
+
+	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
+	void PlayExplosionCameraShake();
+
+
 protected:
 	virtual void BeginPlay();
 	virtual void Tick(float DeltaTime) override;
@@ -167,6 +184,10 @@ protected:
 	
 	/* CameraShake */
 
+	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> ExplosionCameraShake;
+
 	// Œ•UŒ‚ƒqƒbƒg‚ÌƒJƒƒ‰‚Ì—h‚ê
 	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
 	TSubclassOf<UCameraShakeBase> SwordHitCameraShake;
@@ -181,9 +202,9 @@ protected:
 
 	UCameraShakeBase* MoveCameraShakeInstance = nullptr;
 
-	// ƒJƒƒ‰‚Ì—h‚ê
-	void PlayerSwordHitCameraShake();
-	void PlayerReceiveDamageCameraShake();
+	// ƒJƒƒ‰‚Ì—h‚êŠÖ”
+	void PlaySwordHitCameraShake();
+	void PlayReceiveDamageCameraShake();
 	void StartMoveCameraShake();
 	void StopMoveCameraShake();
 	void UpdateMoveCameraShake();
@@ -253,20 +274,6 @@ protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
-
-public:
-	/** Returns Mesh1P subobject **/
-	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
-	/** Returns FirstPersonCameraComponent subobject **/
-	UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
-
-	// “G‚©‚ç‚Ìƒ_ƒ[ƒWˆ—
-	UFUNCTION(BlueprintCallable)
-	void ReceiveEnemyDamage(float Damage);
-
-	// “G‚Ìæ“¾
-	UPROPERTY()
-	AEnemyBase* CurrentEnemy;
 
 
 private:
