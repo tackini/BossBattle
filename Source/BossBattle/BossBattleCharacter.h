@@ -81,9 +81,6 @@ public:
 	UPROPERTY()
 	AEnemyBase* CurrentEnemy;
 
-	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
-	void PlayExplosionCameraShake();
-
 
 protected:
 	virtual void BeginPlay();
@@ -183,10 +180,6 @@ protected:
 
 	
 	/* CameraShake */
-
-	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
-	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
-	TSubclassOf<UCameraShakeBase> ExplosionCameraShake;
 
 	// Œ•UŒ‚ƒqƒbƒg‚ÌƒJƒƒ‰‚Ì—h‚ê
 	UPROPERTY(EditAnywhere, Category = "Combat|Effect")

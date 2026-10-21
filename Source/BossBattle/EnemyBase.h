@@ -231,9 +231,18 @@ protected:
 	UPROPERTY()
 	UMaterialInstanceDynamic* DynamicMaterial;
 
+	/* CameraShake */
+
+	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
+	UPROPERTY(EditAnywhere, Category = "Combat|Effect")
+	TSubclassOf<UCameraShakeBase> ExplosionCameraShake;
+
 	// ”ÍˆÍ‚ÉƒJƒƒ‰‚Ì—h‚ê
 	UFUNCTION(BlueprintCallable)
 	void PlayAOECameraShake(TSubclassOf<UCameraShakeBase> CameraShake);
+
+	// ”š”­‚ÌƒJƒƒ‰‚Ì—h‚ê
+	void PlayExplosionCameraShake();
 
 
 	/* Struct */
@@ -242,9 +251,13 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Status")
 	FEnemyStatus EnemyStatus;
 
-	// PunchAttack
+	// LeftPunchAttack
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
-	FEnemyAttackData PunchAttack;
+	FEnemyAttackData RightPunchAttack;
+
+	// RightPunchAttack
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")
+	FEnemyAttackData LeftPunchAttack;
 
 	// JumpAttack
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|AttackData")

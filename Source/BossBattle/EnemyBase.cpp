@@ -122,6 +122,10 @@ void AEnemyBase::EnableAttackHitBox()
 		return;
 	}
 
+	// デバック
+	UE_LOG(LogTemp, Warning, TEXT("Attack Socket: %s"),
+		*CurrentAttackData.AttackSocketName.ToString());
+
 	// AttackHitBoxをソケットに付与
 	AttackHitBox->AttachToComponent(
 		GetMesh(),
@@ -277,6 +281,24 @@ void AEnemyBase::PlayAOECameraShake(TSubclassOf<UCameraShakeBase> CameraShake)
 	UGameplayStatics::PlayWorldCameraShake(
 		GetWorld(),
 		CameraShake,
+		GetActorLocation(),
+		200,
+		800,
+		1.0f
+	);
+}
+
+// 爆発時のカメラの揺れ
+void AEnemyBase::PlayExplosionCameraShake()
+{
+	if (!ExplosionCameraShake)
+	{
+		return;
+	}
+
+	UGameplayStatics::PlayWorldCameraShake(
+		GetWorld(),
+		ExplosionCameraShake,
 		GetActorLocation(),
 		200,
 		800,
@@ -559,11 +581,8 @@ void AEnemyBase::DestroyEnemy()
 		UGameplayStatics::PlaySoundAtLocation(GetWorld(), AEnemyBase::DeathExplosionSound, GetActorLocation());
 	}
 
-	ABossBattleCharacter* PlayerCharacter = Cast<ABossBattleCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
-	if (PlayerCharacter)
-	{
-		PlayerCharacter->PlayExplosionCameraShake();
-	}
+	// 爆発時のカメラの揺れ
+	PlayExplosionCameraShake();
 
 	// 敵の削除
 	Destroy();

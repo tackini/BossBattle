@@ -368,21 +368,6 @@ void ABossBattleCharacter::PlayReceiveDamageCameraShake()
 	}
 }
 
-// 爆発時のカメラの揺れ
-void ABossBattleCharacter::PlayExplosionCameraShake()
-{
-	if (!ExplosionCameraShake)
-	{
-		return;
-	}
-
-	APlayerController* PC = Cast<APlayerController>(GetController());
-
-	if (PC && PC->PlayerCameraManager)
-	{
-		PC->PlayerCameraManager->StartCameraShake(ExplosionCameraShake, 1.0f);
-	}
-}
 
 // 移動時のカメラの揺れ開始時
 void ABossBattleCharacter::StartMoveCameraShake()
