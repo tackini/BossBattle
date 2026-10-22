@@ -211,8 +211,8 @@ void ABossBattleCharacter::OnSwordHit(
 		TryApplySwordDamage(Enemy);
 	}
 
-	// Œ•‚ª“G‚ÌUŒ‚‚É“–‚½‚Á‚½‚©
-	if (OtherComp && OtherComp->ComponentHasTag("EnemyAttack"))
+	// Œ•‚ª“G‚ÌUŒ‚‚É“–‚½‚Á‚½‚©‚ÂAŒ•‚ÌƒXƒs[ƒh‚ªˆê’èˆÈã‚©
+	if (OtherComp && OtherComp->ComponentHasTag("EnemyAttack") && SwingVelocity.Size() >= DamageSpeedThreshould)
 	{
 		// “G‚ÌUŒ‚•ûŒü‚ð³‹K‰»‚µ‚ÄŽæ“¾
 		FVector EnemyAttackDir = (GetActorLocation() - OtherComp->GetComponentLocation()).GetSafeNormal();
@@ -615,7 +615,7 @@ void ABossBattleCharacter::Tick(float DeltaTime)
 			float NormalizedY = SwordOffset.Y / MaxSwordRangeY;
 			float NormalizedX = SwordOffset.X / MaxSwordRangeX;
 			SwingRot.Pitch = CamRot.Pitch + (-90.0f + NormalizedY * 40.0f);
-			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -30.0f);
+			SwingRot.Roll = CamRot.Roll + (0.0f + NormalizedX * -40.0f);
 			SwordSwingPivot->SetWorldRotation(SwingRot);
 
 			// Œ•‚ÌU‚é‘¬“x‚ªˆê’èˆÈã‚È‚ç‰ñ“]
@@ -656,7 +656,7 @@ FVector ABossBattleCharacter::SetSwordLocation(float DeltaTime, FVector CamLoc, 
 	SwingVelocity = FVector2D(MoveDir.Y, MoveDir.Z);
 
 	// Œ•‚ÌˆÚ“®•ûŒü‚ð³‹K‰»‚µ‚ÄŽæ“¾
-	//CurrentSwordSwingDir = MoveDir.GetSafeNormal();
+	// CurrentSwordSwingDir = MoveDir.GetSafeNormal();
 
 	FVector NewPos = FMath::VInterpTo(
 		CurrentPos,
@@ -686,7 +686,7 @@ void ABossBattleCharacter::RotationSword(float DeltaTime, FVector MoveDir, FVect
 		float BladeAngle = FMath::RadiansToDegrees(
 			FMath::Atan2(LocalY, LocalZ)
 		);
-		BladeAngle = FMath::Clamp(BladeAngle, -75.0f, 75.0f);
+		BladeAngle = FMath::Clamp(BladeAngle, -90.0f, 90.0f);
 
 		FRotator CurrentRollRot = SwordRollPivot->GetRelativeRotation();
 		FRotator TargetRollRot = FRotator(0.0f, BladeAngle, 0.0f);

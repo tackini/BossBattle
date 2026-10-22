@@ -60,7 +60,6 @@ void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 	// UŒ‚‰Â”\‚© 
 	if (!bCanAttack) return;
 
-
 	// Player‚Ìæ“¾
 	if (!Player)
 	{
@@ -83,6 +82,16 @@ void AEnemyBase::TryAttack(const FEnemyAttackData& AttackData)
 
 	// UŒ‚‚µ‚½
 	bCanAttack = false;
+
+	// AI‚ÌUŒ‚‘I‘ğ‚ğ–³Œø‰»
+	AAIController* AICon = Cast<AAIController>(GetController());
+	if (AICon && AICon->GetBlackboardComponent())
+	{
+		AICon->GetBlackboardComponent()->SetValueAsBool(
+			"IsAttacking",
+			true
+		);
+	}
 	
 	// UŒ‚ŠJn
 	Attack(AttackData);
@@ -221,6 +230,16 @@ void AEnemyBase::AttackTrace(FEnemyAttackData& AttackData)
 void AEnemyBase::ResetAttack()
 {
 	bCanAttack = true;
+
+	// AI‚ÌUŒ‚‘I‘ğ‚ğ—LŒø‰»
+	AAIController* AICon = Cast<AAIController>(GetController());
+	if (AICon && AICon->GetBlackboardComponent())
+	{
+		AICon->GetBlackboardComponent()->SetValueAsBool(
+			"IsAttacking",
+			false
+		);
+	}
 }
 
 
