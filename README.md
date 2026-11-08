@@ -26,3 +26,6 @@ UE5とC++を用いて制作しているFPS視点のソードアクションゲ�
 
 ## プレイ動画
 [動画を見る](https://drive.google.com/file/d/1T_rXhu0E9RTGnEdrrRcfL9wTjHsyKJk6/view?usp=drive_link)
+
+## 作品資料
+[資料を見る(pptx)](https://docs.google.com/presentation/d/1PXkXl8Yn3LnZuaO_-X4D_bsSzk1BE3dL/edit?usp=drive_link&ouid=116108943398575099781&rtpof=true&sd=true)
